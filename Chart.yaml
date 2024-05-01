@@ -2,4 +2,10 @@ apiVersion: v2
 name: nectarlib
 description: Library for common nectar things
 type: library
-version: 0.1.0
+version: 1.0.0
+dependencies:
+  - name: common
+    repository: https://charts.bitnami.com/bitnami
+    tags:
+      - bitnami-common
+    version: 2.x.x

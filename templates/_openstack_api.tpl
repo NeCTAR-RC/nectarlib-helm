@@ -91,7 +91,7 @@ spec:
         {{- if $service.apache.enabled }}
         - name: {{ include "nectarlib.fullname" . }}-apache
           configMap:
-            name: {{ include "nectarlib.fullname" . }}-apache
+            name: {{ include "nectarlib.fullname" . }}-{{ $apiName }}-apache
         - name: {{ include "nectarlib.fullname" . }}-apache-work
           emptyDir: {}
         {{- end }}
@@ -117,9 +117,10 @@ spec:
 apiVersion: v1
 kind: Service
 metadata:
-  name: {{ include "nectarlib.fullname" . }}
+  name: {{ include "nectarlib.fullname" . }}-{{ $apiName }}
   labels:
     {{- include "nectarlib.labels" . | nindent 4 }}
+    app.kubernetes.io/component: {{ $apiName }}
 spec:
   type: {{ .Values.service.type }}
   ports:
@@ -129,6 +130,7 @@ spec:
       name: http
   selector:
     {{- include "nectarlib.selectorLabels" . | nindent 4 }}
+    app.kubernetes.io/component: {{ $apiName }}
 
 
 {{- if $service.apache.enabled }}
@@ -136,7 +138,7 @@ spec:
 apiVersion: v1
 kind: ConfigMap
 metadata:
-  name: {{ include "nectarlib.fullname" . }}-apache
+  name: {{ include "nectarlib.fullname" . }}-{{ $apiName }}-apache
   annotations:
     "helm.sh/hook": pre-install,pre-upgrade
     "helm.sh/hook-weight": "2"
@@ -161,23 +163,15 @@ spec:
       {{- include "nectarlib.selectorLabels" . | nindent 6 }}
       app.kubernetes.io/component: {{ $apiName }}
 
-{{- end }}
-
-
+{{ end }}
 {{- if .Values.ingress.enabled -}}
 {{- $fullName := include "nectarlib.fullname" . -}}
 {{- $svcPort := $service.port -}}
-{{- if and .Values.ingress.className (not (semverCompare ">=1.18-0" .Capabilities.KubeVersion.GitVersion)) }}
-  {{- if not (hasKey .Values.ingress.annotations "kubernetes.io/ingress.class") }}
-  {{- $_ := set .Values.ingress.annotations "kubernetes.io/ingress.class" .Values.ingress.className}}
-  {{- end }}
-{{- end }}
-
 ---
 apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
-  name: {{ $fullName }}
+  name: {{ $fullName }}-{{ $apiName }}
   labels:
     {{- include "nectarlib.labels" . | nindent 4 }}
   {{- with .Values.ingress.annotations }}
@@ -185,9 +179,7 @@ metadata:
     {{- toYaml . | nindent 4 }}
   {{- end }}
 spec:
-  {{- if and .Values.ingress.className (semverCompare ">=1.18-0" .Capabilities.KubeVersion.GitVersion) }}
   ingressClassName: {{ .Values.ingress.className }}
-  {{- end }}
   {{- if .Values.ingress.tls }}
   tls:
     {{- range .Values.ingress.tls }}
@@ -205,12 +197,10 @@ spec:
         paths:
           {{- range .paths }}
           - path: {{ .path }}
-            {{- if and .pathType (semverCompare ">=1.18-0" $.Capabilities.KubeVersion.GitVersion) }}
             pathType: {{ .pathType }}
-            {{- end }}
             backend:
               service:
-                name: {{ $fullName }}
+                name: {{ $fullName }}-{{ $apiName }}
                 port:
                   number: {{ $svcPort }}
           {{- end }}

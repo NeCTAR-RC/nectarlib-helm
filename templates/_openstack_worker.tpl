@@ -89,8 +89,23 @@ spec:
     matchLabels:
       {{- include "nectarlib.selectorLabels" . | nindent 6 }}
       app.kubernetes.io/component: {{ $workerName }}
+
 {{- end }}
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: {{ include "nectarlib.fullname" . }}-{{ $workerName }}
+spec:
+  podSelector:
+    matchLabels:
+      {{- include "nectarlib.selectorLabels" . | nindent 6 }}
+      app.kubernetes.io/component: {{ $workerName }}
+  policyTypes:
+  - Ingress
+  - Egress
+  egress:
+  - {}
 
 {{- end -}}
-
 {{- end }}

@@ -213,5 +213,24 @@ spec:
           {{- end }}
     {{- end }}
 {{- end }}
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: {{ include "nectarlib.fullname" . }}-{{ $apiName }}
+spec:
+  podSelector:
+    matchLabels:
+      {{- include "nectarlib.selectorLabels" . | nindent 6 }}
+      app.kubernetes.io/component: {{ $apiName }}
+  policyTypes:
+  - Ingress
+  - Egress
+  egress:
+  - {}
+  ingress:
+    - ports:
+        - port: {{ $service.port }}
+
 {{- end -}}
 {{- end -}}

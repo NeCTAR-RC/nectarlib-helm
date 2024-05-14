@@ -170,9 +170,10 @@ spec:
       app.kubernetes.io/component: {{ $apiName }}
 
 {{ end }}
-{{- if .Values.ingress.enabled -}}
+
+{{ if .Values.ingress.enabled }}
 {{- $fullName := include "nectarlib.fullname" . -}}
-{{- $svcPort := $service.port -}}
+{{ $svcPort := $service.port }}
 ---
 apiVersion: networking.k8s.io/v1
 kind: Ingress

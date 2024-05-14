@@ -149,7 +149,7 @@ metadata:
     "helm.sh/hook": pre-install,pre-upgrade
     "helm.sh/hook-weight": "2"
 data:
-  wsgi-{{ include "nectarlib.fullname" . }}.conf: |-
+  wsgi-{{ include "nectarlib.fullname" (list $ . .Values.api) }}.conf: |-
 {{ include "nectarlib.apache_wsgi" . | indent 4 }}
 
 {{- end }}

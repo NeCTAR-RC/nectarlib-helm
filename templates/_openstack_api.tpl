@@ -76,6 +76,9 @@ spec:
           volumeMounts:
             - name: {{ include "nectarlib.fullname" . }}
               mountPath: "/etc/{{ include "nectarlib.name" . }}/"
+            {{- with $service.volume_mounts }}
+            {{- toYaml . | nindent 12 }}
+            {{- end }}
             {{- if $service.apache.enabled }}
             - name: {{ include "nectarlib.fullname" . }}-apache
               mountPath: "/etc/apache2/sites-enabled/"
@@ -88,6 +91,9 @@ spec:
         - name: {{ include "nectarlib.fullname" . }}
           configMap:
             name: {{ include "nectarlib.fullname" . }}
+        {{- with $service.volumes }}
+        {{- toYaml . | nindent 8 }}
+        {{- end }}
         {{- if $service.apache.enabled }}
         - name: {{ include "nectarlib.fullname" . }}-apache
           configMap:

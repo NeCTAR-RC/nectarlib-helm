@@ -15,7 +15,6 @@ WSGISocketPrefix /apache/wsgi
 <Directory "/var/lib/kolla/venv/bin">
     <FilesMatch "^{{ $service.apache.wsgi_script | default $wsgiScriptDefault }}$">
       Options Indexes FollowSymLinks MultiViews
-      AllowOverride None
       Require all granted
     </FilesMatch>
 </Directory>

@@ -2,7 +2,9 @@ apiVersion: v2
 name: nectarlib
 description: Library for common nectar things
 type: library
-version: 1.7.1
+sources:
+  - https://github.com/NeCTAR-RC/nectarlib-helm.git
+version: 1.7.2
 dependencies:
   - name: common
     repository: https://charts.bitnami.com/bitnami

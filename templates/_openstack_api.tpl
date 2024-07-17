@@ -162,6 +162,7 @@ metadata:
   name: {{ include "nectarlib.fullname" . }}-{{ $apiName }}
   labels:
     {{- include "nectarlib.labels" . | nindent 4 }}
+    app.kubernetes.io/component: {{ $apiName }}
 spec:
   minAvailable: {{ $service.pdb.minAvailable | default 0 }}
   selector:

@@ -30,6 +30,8 @@ spec:
           imagePullPolicy: {{ .Values.image.pullPolicy }}
           command:
             {{- toYaml .Values.job.db_sync.command | nindent 12 }}
+          args:
+            {{- toYaml .Values.job.db_sync.args | nindent 12 }}
           volumeMounts:
             - name: {{ include "nectarlib.fullname" . }}
               mountPath: "/etc/{{ include "nectarlib.name" . }}/"

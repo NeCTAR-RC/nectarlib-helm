@@ -22,6 +22,24 @@ spec:
       serviceAccountName: {{ include "nectarlib.serviceAccountName" . }}
       securityContext:
         {{- toYaml .Values.podSecurityContext | nindent 8 }}
+{{- if .Values.wait_for }}
+{{- if .Values.wait_for.db }}
+{{- if .Values.wait_for.db.host }}
+      initContainers:
+        - name: wait-for-mariadb
+          securityContext:
+            {{- toYaml .Values.securityContext | nindent 12 }}
+          image: cgr.dev/chainguard/wait-for-it:latest
+          args:
+            - '-h'
+            - '{{ .Values.wait_for.db.host }}'
+            - '-p'
+            - '{{ .Values.wait_for.db.port }}'
+            - '-t'
+            - '120'
+{{- end }}
+{{- end }}
+{{- end }}
       containers:
         - name: {{ .Chart.Name }}
           securityContext:

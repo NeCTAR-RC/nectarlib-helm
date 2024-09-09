@@ -39,7 +39,7 @@ spec:
         - name: {{ .Chart.Name }}
           securityContext:
             {{- toYaml .Values.securityContext | nindent 12 }}
-          image: "{{ $service.image.repository }}:{{ $service.image.tag | default .Chart.AppVersion }}"
+          image: "{{ $service.image.repository }}:{{ .Values.image.tag | default .Chart.AppVersion }}"
           imagePullPolicy: {{ .Values.image.pullPolicy }}
           command:
             {{- toYaml $service.command | nindent 12 }}

@@ -27,7 +27,7 @@ WSGISocketPrefix /apache/wsgi
   ServerSignature Off
   LogFormat "%{X-Forwarded-For}i %l %u %t \"%r\" %>s %b %D \"%{Referer}i\" \"%{User-Agent}i\"" logformat
   WSGIApplicationGroup %{GLOBAL}
-  WSGIDaemonProcess {{ .Chart.Name }} group={{ .Chart.Name }} processes={{ $service.apache.threads | default "4" }} threads={{ $service.apache.threads | default "2" }} user={{ .Chart.Name }} {{ $service.apache.extra_config | default "" }}
+  WSGIDaemonProcess {{ .Chart.Name }} group={{ .Chart.Name }} processes={{ $service.apache.processes | default "4" }} threads={{ $service.apache.threads | default "2" }} user={{ .Chart.Name }} {{ $service.apache.extra_config | default "" }}
   WSGIProcessGroup {{ .Chart.Name }}
   WSGIScriptAlias {{ $service.apache.script_alias | default "/" }} "/var/lib/kolla/venv/bin/{{ $service.apache.wsgi_script | default $wsgiScriptDefault }}"
 </VirtualHost>

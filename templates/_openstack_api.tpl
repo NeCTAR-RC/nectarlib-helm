@@ -150,7 +150,7 @@ metadata:
     "helm.sh/hook-weight": "2"
 data:
   wsgi-{{ include "nectarlib.fullname" . }}.conf: |-
-{{ include "nectarlib.apache_wsgi" (list $ . .Values.api) | indent 4 }}
+{{ include "nectarlib.apache_wsgi" (list $ . $service) | indent 4 }}
 
 {{- end }}
 

@@ -172,7 +172,7 @@ spec:
 
 {{ end }}
 
-{{ if .Values.ingress.enabled }}
+{{ if $service.ingress.enabled }}
 {{- $fullName := include "nectarlib.fullname" . -}}
 {{ $svcPort := $service.port }}
 ---
@@ -182,15 +182,15 @@ metadata:
   name: {{ $fullName }}-{{ $apiName }}
   labels:
     {{- include "nectarlib.labels" . | nindent 4 }}
-  {{- with .Values.ingress.annotations }}
+  {{- with $service.ingress.annotations }}
   annotations:
     {{- toYaml . | nindent 4 }}
   {{- end }}
 spec:
-  ingressClassName: {{ .Values.ingress.className }}
-  {{- if .Values.ingress.tls }}
+  ingressClassName: {{ $service.ingress.className }}
+  {{- if $service.ingress.tls }}
   tls:
-    {{- range .Values.ingress.tls }}
+    {{- range $service.ingress.tls }}
     - hosts:
         {{- range .hosts }}
         - {{ . | quote }}
@@ -199,7 +199,7 @@ spec:
     {{- end }}
   {{- end }}
   rules:
-    {{- range .Values.ingress.hosts }}
+    {{- range $service.ingress.hosts }}
     - host: {{ .host | quote }}
       http:
         paths:

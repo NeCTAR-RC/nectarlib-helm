@@ -73,6 +73,8 @@ spec:
               path: /healthcheck
               port: http
             initialDelaySeconds: 30
+            timeoutSeconds: 5
+            failureThreshold: 10
           volumeMounts:
             - name: {{ include "nectarlib.fullname" . }}
               mountPath: "/etc/{{ include "nectarlib.name" . }}/"

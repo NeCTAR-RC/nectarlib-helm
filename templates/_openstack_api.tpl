@@ -23,7 +23,9 @@ spec:
     metadata:
       annotations:
         checksum/config: {{ include (print $.Template.BasePath "/config-map.yaml") . | sha256sum }}
+        {{- if ne (toString .Values.vault.enabled) "false" }}
         {{- include (print .Chart.Name ".vaultAnnotations") . | nindent 8 }}
+        {{- end }}
       labels:
         {{- include "nectarlib.selectorLabels" . | nindent 8 }}
         app.kubernetes.io/component: {{ $apiName }}

@@ -14,7 +14,9 @@ spec:
   template:
     metadata:
       annotations:
+        {{- if ne (toString .Values.vault.enabled) "false" }}
         {{- include (print .Chart.Name ".vaultAnnotations") . | nindent 8 }}
+        {{- end }}
       labels:
         {{- include "nectarlib.selectorLabels" . | nindent 8 }}
     spec:

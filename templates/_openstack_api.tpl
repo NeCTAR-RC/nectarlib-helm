@@ -62,6 +62,11 @@ spec:
             - name: APACHE_RUN_USER
               value: {{ .Chart.Name }}
           {{- end }}
+          {{- if .Values.conf.envSecretRef }}
+          envFrom:
+          - secretRef:
+              name: {{ .Values.conf.envSecretRef }}
+          {{- end }}
           ports:
             - name: http
               containerPort: {{ $service.port | default 80 }}

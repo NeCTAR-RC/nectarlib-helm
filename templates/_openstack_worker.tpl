@@ -45,6 +45,11 @@ spec:
           imagePullPolicy: {{ .Values.image.pullPolicy }}
           command:
             {{- toYaml $service.command | nindent 12 }}
+          {{- if .Values.conf.envSecretRef }}
+          envFrom:
+          - secretRef:
+              name: {{ .Values.conf.envSecretRef }}
+          {{- end }}
           volumeMounts:
             - name: {{ include "nectarlib.fullname" . }}
               mountPath: "/etc/{{ include "nectarlib.name" . }}/"

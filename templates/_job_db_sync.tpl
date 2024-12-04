@@ -52,6 +52,11 @@ spec:
             {{- toYaml .Values.job.db_sync.command | nindent 12 }}
           args:
             {{- toYaml .Values.job.db_sync.args | nindent 12 }}
+          {{- if .Values.conf.envSecretRef }}
+          envFrom:
+          - secretRef:
+              name: {{ .Values.conf.envSecretRef }}
+          {{- end }}
           volumeMounts:
             - name: {{ include "nectarlib.fullname" . }}
               mountPath: "/etc/{{ include "nectarlib.name" . }}/"

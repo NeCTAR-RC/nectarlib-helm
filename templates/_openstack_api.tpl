@@ -224,6 +224,40 @@ spec:
     {{- end }}
 {{- end }}
 ---
+{{ if $service.gateway.enabled  }}
+{{- $fullName := include "nectarlib.fullname" . -}}
+{{ $svcPort := $service.port }}
+---
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata:
+  name: {{ $fullName }}-{{ $apiName }}
+  labels:
+    {{- include "nectarlib.labels" . | nindent 4 }}
+  {{- with $service.gateway.annotations }}
+  annotations:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+spec:
+  {{- with $service.gateway.parentRefs }}
+  parentRefs:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+  hostnames:
+    - {{ $service.gateway.hostname }}
+  rules:
+    - backendRefs:
+        - group: ""
+          kind: Service
+          name: {{ $fullName }}-{{ $apiName }}
+          port: {{ $svcPort }}
+          weight: 1
+      matches:
+        - path:
+            type: PathPrefix
+            value: /
+{{- end }}
+---
 apiVersion: networking.k8s.io/v1
 kind: NetworkPolicy
 metadata:

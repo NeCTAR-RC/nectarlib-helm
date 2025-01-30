@@ -138,6 +138,7 @@ metadata:
     app.kubernetes.io/component: {{ $apiName }}
 spec:
   type: {{ .Values.service.type }}
+  externalTrafficPolicy: Local
   ports:
     - port: {{ $service.port }}
       targetPort: http

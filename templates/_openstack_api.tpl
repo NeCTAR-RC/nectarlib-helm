@@ -138,7 +138,9 @@ metadata:
     app.kubernetes.io/component: {{ $apiName }}
 spec:
   type: {{ .Values.service.type }}
+  {{- if ne .Values.service.type "ClusterIP" }}
   externalTrafficPolicy: Local
+  {{- end }}
   ports:
     - port: {{ $service.port }}
       targetPort: http

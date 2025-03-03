@@ -246,8 +246,15 @@ spec:
   parentRefs:
     {{- toYaml . | nindent 4 }}
   {{- end }}
+  {{ if $service.gateway.hostnames }}
+  {{- with $service.gateway.hostnames }}
+  hostnames:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+  {{- else }}
   hostnames:
     - {{ $service.gateway.hostname }}
+  {{- end }}
   rules:
     - backendRefs:
         - group: ""

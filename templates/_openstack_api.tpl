@@ -98,6 +98,30 @@ spec:
             {{- end }}
           resources:
             {{- toYaml $service.resources | nindent 12 }}
+        {{ if $service.extra_container }}
+        - name: {{ $service.extra_container.name }}
+          securityContext:
+            {{- toYaml .Values.securityContext | nindent 12 }}
+          image: "{{ $service.extra_container.image.repository }}:{{ .Values.image.tag | default .Chart.AppVersion }}"
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          {{- if $service.command }}
+          command:
+            {{- toYaml $service.extra_container.command | nindent 12 }}
+          {{- end }}
+          {{- if .Values.conf.envSecretRef }}
+          envFrom:
+          - secretRef:
+              name: {{ .Values.conf.envSecretRef }}
+          {{- end }}
+          volumeMounts:
+            - name: {{ include "nectarlib.fullname" . }}
+              mountPath: "/etc/{{ include "nectarlib.name" . }}/"
+            {{- with $service.volume_mounts }}
+            {{- toYaml . | nindent 12 }}
+            {{- end }}
+          resources:
+            {{- toYaml $service.resources | nindent 12 }}
+          {{- end }}
       volumes:
         - name: {{ include "nectarlib.fullname" . }}
           configMap:

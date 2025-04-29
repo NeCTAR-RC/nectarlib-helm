@@ -68,20 +68,22 @@ spec:
               name: {{ .Values.conf.envSecretRef }}
           {{- end }}
           ports:
-            - name: http
+            - name: {{ $service.port_name | default "http" }}
               containerPort: {{ $service.port | default 80 }}
-              protocol: TCP
+              protocol: {{ $service.protocol | default "TCP" }}
+          {{- if ne (toString $service.healthchecks) "false" }}
           livenessProbe:
             httpGet:
               path: /healthcheck
-              port: http
+              port: {{ $service.port_name | default "http" }}
           startupProbe:
             httpGet:
               path: /healthcheck
-              port: http
+              port: {{ $service.port_name | default "http" }}
             initialDelaySeconds: 30
             timeoutSeconds: 5
             failureThreshold: 10
+          {{- end }}
           volumeMounts:
             - name: {{ include "nectarlib.fullname" . }}
               mountPath: "/etc/{{ include "nectarlib.name" . }}/"
@@ -143,9 +145,9 @@ spec:
   {{- end }}
   ports:
     - port: {{ $service.port }}
-      targetPort: http
-      protocol: TCP
-      name: http
+      targetPort: {{ $service.port_name | default "http" }}
+      protocol: {{ $service.protocol | default "TCP" }}
+      name: {{ $service.port_name | default "http" }}
   selector:
     {{- include "nectarlib.selectorLabels" . | nindent 4 }}
     app.kubernetes.io/component: {{ $apiName }}
@@ -285,6 +287,7 @@ spec:
   ingress:
     - ports:
         - port: {{ $service.port }}
+          protocol: {{ $service.protocol | default "TCP" }}
 
 {{- end -}}
 {{- end -}}

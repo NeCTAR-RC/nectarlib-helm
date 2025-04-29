@@ -257,8 +257,8 @@ spec:
 {{- $fullName := include "nectarlib.fullname" . -}}
 {{ $svcPort := $service.port }}
 ---
-apiVersion: gateway.networking.k8s.io/v1
-kind: HTTPRoute
+apiVersion: {{ $service.gateway.apiVersion | default "gateway.networking.k8s.io/v1" }}
+kind: {{ $service.gateway.kind | default "HTTPRoute" }}
 metadata:
   name: {{ $fullName }}-{{ $apiName }}
   labels:
@@ -277,7 +277,7 @@ spec:
   hostnames:
     {{- toYaml . | nindent 4 }}
   {{- end }}
-  {{- else }}
+  {{- else if $service.gateway.hostname }}
   hostnames:
     - {{ $service.gateway.hostname }}
   {{- end }}
@@ -288,10 +288,12 @@ spec:
           name: {{ $fullName }}-{{ $apiName }}
           port: {{ $svcPort }}
           weight: 1
+      {{ if ne $service.gateway.kind "UDPRoute" }}
       matches:
         - path:
             type: PathPrefix
             value: /
+      {{- end }}
 {{- end }}
 ---
 apiVersion: networking.k8s.io/v1

@@ -120,7 +120,7 @@ spec:
             {{- toYaml . | nindent 12 }}
             {{- end }}
           resources:
-            {{- toYaml $service.resources | nindent 12 }}
+            {{- toYaml $service.extra_container.resources | nindent 12 }}
           {{- end }}
       volumes:
         - name: {{ include "nectarlib.fullname" . }}

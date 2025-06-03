@@ -294,6 +294,10 @@ spec:
             type: PathPrefix
             value: /
       {{- end }}
+      {{- with $service.gateway.timeouts }}
+      timeouts:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
 {{- end }}
 ---
 apiVersion: networking.k8s.io/v1

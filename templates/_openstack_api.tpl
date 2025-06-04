@@ -74,11 +74,11 @@ spec:
           {{- if ne (toString $service.healthchecks) "false" }}
           livenessProbe:
             httpGet:
-              path: /healthcheck
+              path: {{ $service.healthcheck_path | default "/healthcheck" }}
               port: {{ $service.port_name | default "http" }}
           startupProbe:
             httpGet:
-              path: /healthcheck
+              path: {{ $service.healthcheck_path | default "/healthcheck" }}
               port: {{ $service.port_name | default "http" }}
             initialDelaySeconds: 30
             timeoutSeconds: 5

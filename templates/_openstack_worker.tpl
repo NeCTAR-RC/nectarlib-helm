@@ -92,7 +92,7 @@ metadata:
     {{- include "nectarlib.labels" . | nindent 4 }}
     app.kubernetes.io/component: {{ $workerName }}
 spec:
-  minAvailable: {{ $service.pdb.minAvailable | default 0 }}
+  minAvailable: {{ $service.pdb.minAvailable | default 1 }}
   selector:
     matchLabels:
       {{- include "nectarlib.selectorLabels" . | nindent 6 }}

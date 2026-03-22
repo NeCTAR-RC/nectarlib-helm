@@ -4,10 +4,4 @@ description: Library for common nectar things
 type: library
 sources:
   - https://github.com/NeCTAR-RC/nectarlib-helm.git
-version: 3.1.4
-dependencies:
-  - name: common
-    repository: https://charts.bitnami.com/bitnami
-    tags:
-      - bitnami-common
-    version: 2.x.x
+version: 3.2.0

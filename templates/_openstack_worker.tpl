@@ -70,12 +70,12 @@ spec:
         {{- toYaml . | nindent 8 }}
       {{- end }}
       {{- if $service.affinity }}
-      affinity: {{- include "common.tplvalues.render" (dict "value" $service.affinity "context" $) | nindent 8 }}
+      affinity: {{- include "nectarlib.tplvalues.render" (dict "value" $service.affinity "context" $) | nindent 8 }}
       {{- else }}
       affinity:
-        podAffinity: {{- include "common.affinities.pods" (dict "type" $service.podAffinityPreset "component" $workerName "context" $) | nindent 10 }}
-        podAntiAffinity: {{- include "common.affinities.pods" (dict "type" $service.podAntiAffinityPreset "component" $workerName "context" $) | nindent 10 }}
-        nodeAffinity: {{- include "common.affinities.nodes" (dict "type" $service.nodeAffinityPreset.type "key" $service.nodeAffinityPreset.key "values" $service.nodeAffinityPreset.values) | nindent 10 }}
+        podAffinity: {{- include "nectarlib.affinities.pods" (dict "type" $service.podAffinityPreset "component" $workerName "context" $) | nindent 10 }}
+        podAntiAffinity: {{- include "nectarlib.affinities.pods" (dict "type" $service.podAntiAffinityPreset "component" $workerName "context" $) | nindent 10 }}
+        nodeAffinity: {{- include "nectarlib.affinities.nodes" (dict "type" $service.nodeAffinityPreset.type "key" $service.nodeAffinityPreset.key "values" $service.nodeAffinityPreset.values) | nindent 10 }}
       {{- end }}
       {{- with .Values.tolerations }}
       tolerations:

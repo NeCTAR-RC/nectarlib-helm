@@ -1,0 +1,673 @@
+suite: nectarlib.openstack_api
+templates:
+  - api.yaml
+  - config-map.yaml
+release:
+  name: my
+  namespace: testing
+
+# Notes:
+#   - config-map.yaml is listed in `templates:` because the api template references
+#     it via $.Template.BasePath for the checksum/config annotation.
+#   - Each test scopes its assertions to api.yaml with `template:`.
+#   - documentSelector at the asserter-sibling level is the reliable way to
+#     pick a specific kind out of a multi-doc render in helm-unittest v1.x.
+
+tests:
+  - it: api renders Deployment + Service + NetworkPolicy by default
+    template: api.yaml
+    asserts:
+      - hasDocuments:
+          count: 3
+      - documentSelector:
+          path: kind
+          value: Deployment
+        equal:
+          path: metadata.name
+          value: my-consumer-api
+      - documentSelector:
+          path: kind
+          value: Service
+        equal:
+          path: metadata.name
+          value: my-consumer-api
+      - documentSelector:
+          path: kind
+          value: NetworkPolicy
+        equal:
+          path: metadata.name
+          value: my-consumer-api
+
+  - it: Deployment uses image.repository:Chart.AppVersion and IfNotPresent
+    template: api.yaml
+    documentSelector:
+      path: kind
+      value: Deployment
+    asserts:
+      - equal:
+          path: spec.template.spec.containers[0].image
+          value: example/test-api:test
+      - equal:
+          path: spec.template.spec.containers[0].imagePullPolicy
+          value: IfNotPresent
+      - equal:
+          path: spec.template.spec.containers[0].name
+          value: consumer
+
+  - it: image.tag overrides Chart.AppVersion
+    template: api.yaml
+    set:
+      image.tag: "9.9.9"
+    documentSelector:
+      path: kind
+      value: Deployment
+    asserts:
+      - equal:
+          path: spec.template.spec.containers[0].image
+          value: example/test-api:9.9.9
+
+  - it: container port flows to Deployment + Service + NetworkPolicy
+    template: api.yaml
+    set:
+      api.port: 9292
+      api.port_name: glance
+      api.protocol: TCP
+    asserts:
+      - documentSelector:
+          path: kind
+          value: Deployment
+        equal:
+          path: spec.template.spec.containers[0].ports[0]
+          value:
+            name: glance
+            containerPort: 9292
+            protocol: TCP
+      - documentSelector:
+          path: kind
+          value: Service
+        equal:
+          path: spec.ports[0]
+          value:
+            port: 9292
+            targetPort: glance
+            protocol: TCP
+            name: glance
+      - documentSelector:
+          path: kind
+          value: NetworkPolicy
+        equal:
+          path: spec.ingress[0].ports[0]
+          value:
+            port: 9292
+            protocol: TCP
+
+  - it: replicaCount honored when autoscaling disabled
+    template: api.yaml
+    set:
+      api.replicaCount: 4
+    documentSelector:
+      path: kind
+      value: Deployment
+    asserts:
+      - equal:
+          path: spec.replicas
+          value: 4
+
+  - it: replicas omitted when autoscaling enabled
+    template: api.yaml
+    set:
+      autoscaling.enabled: true
+      api.replicaCount: 4
+    documentSelector:
+      path: kind
+      value: Deployment
+    asserts:
+      - notExists:
+          path: spec.replicas
+
+  - it: probes use healthcheck_path
+    template: api.yaml
+    set:
+      api.healthcheck_path: /healthz
+    documentSelector:
+      path: kind
+      value: Deployment
+    asserts:
+      - equal:
+          path: spec.template.spec.containers[0].livenessProbe.httpGet.path
+          value: /healthz
+      - equal:
+          path: spec.template.spec.containers[0].readinessProbe.httpGet.path
+          value: /healthz
+      - equal:
+          path: spec.template.spec.containers[0].startupProbe.httpGet.path
+          value: /healthz
+      - equal:
+          path: spec.template.spec.containers[0].startupProbe.initialDelaySeconds
+          value: 30
+      - equal:
+          path: spec.template.spec.containers[0].startupProbe.failureThreshold
+          value: 10
+
+  - it: healthchecks string "false" disables all probes
+    template: api.yaml
+    set:
+      api.healthchecks: "false"
+    documentSelector:
+      path: kind
+      value: Deployment
+    asserts:
+      - notExists:
+          path: spec.template.spec.containers[0].livenessProbe
+      - notExists:
+          path: spec.template.spec.containers[0].readinessProbe
+      - notExists:
+          path: spec.template.spec.containers[0].startupProbe
+
+  - it: healthchecks bool false also disables probes
+    template: api.yaml
+    set:
+      api.healthchecks: false
+    documentSelector:
+      path: kind
+      value: Deployment
+    asserts:
+      - notExists:
+          path: spec.template.spec.containers[0].livenessProbe
+
+  - it: vault.enabled=false omits vault annotations
+    template: api.yaml
+    set:
+      vault.enabled: false
+    documentSelector:
+      path: kind
+      value: Deployment
+    asserts:
+      - notExists:
+          path: spec.template.metadata.annotations["vault.hashicorp.com/agent-inject"]
+      - exists:
+          path: spec.template.metadata.annotations["checksum/config"]
+
+  - it: vault.enabled=true includes vault annotations on pod template
+    template: api.yaml
+    set:
+      vault.enabled: true
+    documentSelector:
+      path: kind
+      value: Deployment
+    asserts:
+      - equal:
+          path: spec.template.metadata.annotations["vault.hashicorp.com/agent-inject"]
+          value: "true"
+      - equal:
+          path: spec.template.metadata.annotations["vault.hashicorp.com/role"]
+          value: consumer
+
+  # The library treats any non-"false" value as enabled
+  # (ne (toString .Values.vault.enabled) "false"). Tested with `0` here
+  # (which is truthy under that check) to lock the behavior.
+  - it: vault non-"false" value still enables annotations
+    template: api.yaml
+    set:
+      vault.enabled: 0
+    documentSelector:
+      path: kind
+      value: Deployment
+    asserts:
+      - exists:
+          path: spec.template.metadata.annotations["vault.hashicorp.com/agent-inject"]
+
+  - it: PDB not rendered when pdb.enabled=false
+    template: api.yaml
+    asserts:
+      - hasDocuments:
+          count: 3
+
+  - it: PDB rendered with minAvailable when enabled
+    template: api.yaml
+    set:
+      api.pdb.enabled: true
+      api.pdb.minAvailable: 3
+    asserts:
+      - hasDocuments:
+          count: 4
+      - documentSelector:
+          path: kind
+          value: PodDisruptionBudget
+        equal:
+          path: metadata.name
+          value: my-consumer-api
+      - documentSelector:
+          path: kind
+          value: PodDisruptionBudget
+        equal:
+          path: spec.minAvailable
+          value: 3
+      - documentSelector:
+          path: kind
+          value: PodDisruptionBudget
+        equal:
+          path: spec.selector.matchLabels["app.kubernetes.io/component"]
+          value: api
+
+  - it: Ingress rendered when enabled with tls + hosts
+    template: api.yaml
+    set:
+      api.ingress.enabled: true
+      api.ingress.className: nginx
+      api.ingress.annotations:
+        cert-manager.io/cluster-issuer: letsencrypt
+      api.ingress.tls:
+        - hosts: [example.test]
+          secretName: example-tls
+      api.ingress.hosts:
+        - host: example.test
+          paths:
+            - path: /
+              pathType: Prefix
+    documentSelector:
+      path: kind
+      value: Ingress
+    asserts:
+      - equal:
+          path: metadata.name
+          value: my-consumer-api
+      - equal:
+          path: spec.ingressClassName
+          value: nginx
+      - equal:
+          path: metadata.annotations["cert-manager.io/cluster-issuer"]
+          value: letsencrypt
+      - equal:
+          path: spec.tls[0].secretName
+          value: example-tls
+      - equal:
+          path: spec.rules[0].host
+          value: example.test
+      - equal:
+          path: spec.rules[0].http.paths[0].backend.service.name
+          value: my-consumer-api
+      - equal:
+          path: spec.rules[0].http.paths[0].backend.service.port.number
+          value: 9000
+
+  - it: HTTPRoute rendered when gateway.enabled (default kind)
+    template: api.yaml
+    set:
+      api.gateway.enabled: true
+      api.gateway.parentRefs:
+        - name: external
+          namespace: gateway-system
+      api.gateway.hostnames:
+        - api.example.test
+      api.gateway.timeouts:
+        request: 30s
+    documentSelector:
+      path: kind
+      value: HTTPRoute
+    asserts:
+      - equal:
+          path: apiVersion
+          value: gateway.networking.k8s.io/v1
+      - equal:
+          path: metadata.name
+          value: my-consumer-api
+      - equal:
+          path: spec.parentRefs[0].name
+          value: external
+      - equal:
+          path: spec.hostnames[0]
+          value: api.example.test
+      - equal:
+          path: spec.rules[0].matches[0].path
+          value:
+            type: PathPrefix
+            value: /
+      - equal:
+          path: spec.rules[0].timeouts.request
+          value: 30s
+      - equal:
+          path: spec.rules[0].backendRefs[0].port
+          value: 9000
+
+  - it: gateway.kind=TCPRoute omits HTTPRoute path matches
+    template: api.yaml
+    set:
+      api.gateway.enabled: true
+      api.gateway.kind: TCPRoute
+      api.gateway.parentRefs:
+        - name: tcp-gateway
+    documentSelector:
+      path: kind
+      value: TCPRoute
+    asserts:
+      - equal:
+          path: metadata.name
+          value: my-consumer-api
+      - notExists:
+          path: spec.rules[0].matches
+
+  - it: gateway falls back to singular .hostname when .hostnames absent
+    template: api.yaml
+    set:
+      api.gateway.enabled: true
+      api.gateway.parentRefs:
+        - name: gw
+      api.gateway.hostname: legacy.example.test
+    documentSelector:
+      path: kind
+      value: HTTPRoute
+    asserts:
+      - equal:
+          path: spec.hostnames[0]
+          value: legacy.example.test
+
+  - it: apache.enabled adds apache configmap, env, and mounts
+    template: api.yaml
+    set:
+      api.apache.enabled: true
+    asserts:
+      - documentSelector:
+          path: metadata.name
+          value: my-consumer-api-apache
+        isKind:
+          of: ConfigMap
+      - documentSelector:
+          path: metadata.name
+          value: my-consumer-api-apache
+        matchRegex:
+          path: data["wsgi-my-consumer.conf"]
+          pattern: "WSGIDaemonProcess consumer"
+      - documentSelector:
+          path: kind
+          value: Deployment
+        contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: APACHE_RUN_USER
+            value: consumer
+      - documentSelector:
+          path: kind
+          value: Deployment
+        contains:
+          path: spec.template.spec.containers[0].volumeMounts
+          content:
+            name: my-consumer-apache
+            mountPath: /etc/apache2/sites-enabled/
+      - documentSelector:
+          path: kind
+          value: Deployment
+        contains:
+          path: spec.template.spec.volumes
+          content:
+            name: my-consumer-apache
+            configMap:
+              name: my-consumer-api-apache
+
+  - it: uwsgi.enabled adds uwsgi configmap with module/processes
+    template: api.yaml
+    set:
+      api.uwsgi.enabled: true
+      api.uwsgi.module: blazar.api.wsgi:application
+      api.uwsgi.processes: 8
+    asserts:
+      - documentSelector:
+          path: metadata.name
+          value: my-consumer-api-uwsgi
+        isKind:
+          of: ConfigMap
+      - documentSelector:
+          path: metadata.name
+          value: my-consumer-api-uwsgi
+        matchRegex:
+          path: data["uwsgi.ini"]
+          pattern: "module = blazar\\.api\\.wsgi:application"
+      - documentSelector:
+          path: metadata.name
+          value: my-consumer-api-uwsgi
+        matchRegex:
+          path: data["uwsgi.ini"]
+          pattern: "processes = 8"
+      - documentSelector:
+          path: kind
+          value: Deployment
+        contains:
+          path: spec.template.spec.containers[0].volumeMounts
+          content:
+            name: my-consumer-uwsgi
+            mountPath: /etc/uwsgi/
+
+  - it: extra_container adds a sidecar
+    template: api.yaml
+    set:
+      api.extra_container:
+        name: metrics
+        image:
+          repository: example/exporter
+          tag: "v1"
+        command: ["/exporter"]
+        resources:
+          limits:
+            memory: 64Mi
+    documentSelector:
+      path: kind
+      value: Deployment
+    asserts:
+      - lengthEqual:
+          path: spec.template.spec.containers
+          count: 2
+      - equal:
+          path: spec.template.spec.containers[1].name
+          value: metrics
+      - equal:
+          path: spec.template.spec.containers[1].image
+          value: example/exporter:v1
+      - equal:
+          path: spec.template.spec.containers[1].command[0]
+          value: /exporter
+      - equal:
+          path: spec.template.spec.containers[1].resources.limits.memory
+          value: 64Mi
+
+  - it: extra_container falls back through image.tag to AppVersion
+    template: api.yaml
+    set:
+      image.tag: "2.0"
+      api.extra_container:
+        name: metrics
+        image:
+          repository: example/exporter
+    documentSelector:
+      path: kind
+      value: Deployment
+    asserts:
+      - equal:
+          path: spec.template.spec.containers[1].image
+          value: example/exporter:2.0
+
+  - it: api.command overrides container command
+    template: api.yaml
+    set:
+      api.command: ["/bin/serve", "--config", "/etc/consumer/consumer.conf"]
+    documentSelector:
+      path: kind
+      value: Deployment
+    asserts:
+      - equal:
+          path: spec.template.spec.containers[0].command
+          value: ["/bin/serve", "--config", "/etc/consumer/consumer.conf"]
+
+  - it: conf.envSecretRef wires envFrom on api and extra_container
+    template: api.yaml
+    set:
+      conf.envSecretRef: consumer-secrets
+      api.extra_container:
+        name: metrics
+        image:
+          repository: example/exporter
+    documentSelector:
+      path: kind
+      value: Deployment
+    asserts:
+      - equal:
+          path: spec.template.spec.containers[0].envFrom[0].secretRef.name
+          value: consumer-secrets
+      - equal:
+          path: spec.template.spec.containers[1].envFrom[0].secretRef.name
+          value: consumer-secrets
+
+  - it: imagePullSecrets propagated to pod
+    template: api.yaml
+    set:
+      imagePullSecrets:
+        - name: registry-creds
+    documentSelector:
+      path: kind
+      value: Deployment
+    asserts:
+      - equal:
+          path: spec.template.spec.imagePullSecrets[0].name
+          value: registry-creds
+
+  - it: extra volumes + volume_mounts merge in
+    template: api.yaml
+    set:
+      api.volumes:
+        - name: data
+          emptyDir: {}
+      api.volume_mounts:
+        - name: data
+          mountPath: /var/lib/data
+    documentSelector:
+      path: kind
+      value: Deployment
+    asserts:
+      - contains:
+          path: spec.template.spec.volumes
+          content:
+            name: data
+            emptyDir: {}
+      - contains:
+          path: spec.template.spec.containers[0].volumeMounts
+          content:
+            name: data
+            mountPath: /var/lib/data
+
+  - it: explicit affinity overrides preset affinities
+    template: api.yaml
+    set:
+      api.affinity:
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+              - matchExpressions:
+                  - key: node-role
+                    operator: In
+                    values: [openstack]
+    documentSelector:
+      path: kind
+      value: Deployment
+    asserts:
+      - equal:
+          path: spec.template.spec.affinity.nodeAffinity.requiredDuringSchedulingIgnoredDuringExecution.nodeSelectorTerms[0].matchExpressions[0].key
+          value: node-role
+      - notExists:
+          path: spec.template.spec.affinity.podAntiAffinity
+
+  - it: default podAntiAffinityPreset=soft yields preferred anti-affinity
+    template: api.yaml
+    documentSelector:
+      path: kind
+      value: Deployment
+    asserts:
+      - exists:
+          path: spec.template.spec.affinity.podAntiAffinity.preferredDuringSchedulingIgnoredDuringExecution
+      - equal:
+          path: spec.template.spec.affinity.podAntiAffinity.preferredDuringSchedulingIgnoredDuringExecution[0].podAffinityTerm.labelSelector.matchLabels["app.kubernetes.io/component"]
+          value: api
+
+  - it: Service type=LoadBalancer adds externalTrafficPolicy Local
+    template: api.yaml
+    set:
+      service.type: LoadBalancer
+    documentSelector:
+      path: kind
+      value: Service
+    asserts:
+      - equal:
+          path: spec.type
+          value: LoadBalancer
+      - equal:
+          path: spec.externalTrafficPolicy
+          value: Local
+
+  - it: Service type=ClusterIP omits externalTrafficPolicy
+    template: api.yaml
+    documentSelector:
+      path: kind
+      value: Service
+    asserts:
+      - equal:
+          path: spec.type
+          value: ClusterIP
+      - notExists:
+          path: spec.externalTrafficPolicy
+
+  - it: NetworkPolicy allows ingress on container port + unrestricted egress
+    template: api.yaml
+    documentSelector:
+      path: kind
+      value: NetworkPolicy
+    asserts:
+      - equal:
+          path: spec.policyTypes
+          value: [Ingress, Egress]
+      - equal:
+          path: spec.egress
+          value: [{}]
+      - equal:
+          path: spec.ingress[0].ports[0].port
+          value: 9000
+      - equal:
+          path: spec.podSelector.matchLabels["app.kubernetes.io/component"]
+          value: api
+
+  - it: api.name override changes resource suffix + component label
+    template: api.yaml
+    set:
+      api.name: public-api
+    asserts:
+      - documentSelector:
+          path: kind
+          value: Deployment
+        equal:
+          path: metadata.name
+          value: my-consumer-public-api
+      - documentSelector:
+          path: kind
+          value: Service
+        equal:
+          path: metadata.name
+          value: my-consumer-public-api
+      - documentSelector:
+          path: kind
+          value: NetworkPolicy
+        equal:
+          path: metadata.name
+          value: my-consumer-public-api
+      - documentSelector:
+          path: kind
+          value: Deployment
+        equal:
+          path: metadata.labels["app.kubernetes.io/component"]
+          value: public-api
+
+  - it: checksum/config annotation is a sha256
+    template: api.yaml
+    documentSelector:
+      path: kind
+      value: Deployment
+    asserts:
+      - matchRegex:
+          path: spec.template.metadata.annotations["checksum/config"]
+          pattern: "^[a-f0-9]{64}$"

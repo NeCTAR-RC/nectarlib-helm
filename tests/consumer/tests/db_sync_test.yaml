@@ -1,0 +1,162 @@
+suite: nectarlib.job_db_sync
+templates:
+  - db-sync.yaml
+release:
+  name: my
+  namespace: testing
+
+tests:
+  - it: nothing rendered by default (job.db_sync.enabled defaults to false)
+    template: db-sync.yaml
+    asserts:
+      - hasDocuments:
+          count: 0
+
+  - it: Job rendered when enabled, with pre-install/pre-upgrade hook
+    template: db-sync.yaml
+    set:
+      job.db_sync.enabled: true
+      job.db_sync.command: [consumer-manage]
+      job.db_sync.args: [db_sync]
+    asserts:
+      - hasDocuments:
+          count: 1
+      - isKind:
+          of: Job
+      - equal:
+          path: apiVersion
+          value: batch/v1
+      - equal:
+          path: metadata.name
+          value: my-consumer-db-sync
+      - equal:
+          path: metadata.annotations["helm.sh/hook"]
+          value: pre-install,pre-upgrade
+      - equal:
+          path: metadata.annotations["helm.sh/hook-weight"]
+          value: "3"
+      - equal:
+          path: metadata.annotations["helm.sh/hook-delete-policy"]
+          value: before-hook-creation,hook-succeeded
+      - equal:
+          path: spec.template.spec.restartPolicy
+          value: Never
+
+  - it: Job uses .Values.api.image.repository and command/args
+    template: db-sync.yaml
+    set:
+      job.db_sync.enabled: true
+      job.db_sync.command: [consumer-manage]
+      job.db_sync.args: [db_sync]
+    asserts:
+      - equal:
+          path: spec.template.spec.containers[0].image
+          value: example/test-api:test
+      - equal:
+          path: spec.template.spec.containers[0].command
+          value: [consumer-manage]
+      - equal:
+          path: spec.template.spec.containers[0].args
+          value: [db_sync]
+
+  - it: image.tag overrides Chart.AppVersion for the Job
+    template: db-sync.yaml
+    set:
+      image.tag: "abc123"
+      job.db_sync.enabled: true
+      job.db_sync.command: [m]
+      job.db_sync.args: [s]
+    asserts:
+      - equal:
+          path: spec.template.spec.containers[0].image
+          value: example/test-api:abc123
+
+  - it: wait_for.db.host adds a wait-for-mariadb init container
+    template: db-sync.yaml
+    set:
+      job.db_sync.enabled: true
+      job.db_sync.command: [m]
+      job.db_sync.args: [s]
+      wait_for.db.host: db.svc
+      wait_for.db.port: 3307
+    asserts:
+      - equal:
+          path: spec.template.spec.initContainers[0].name
+          value: wait-for-mariadb
+      - equal:
+          path: spec.template.spec.initContainers[0].image
+          value: cgr.dev/chainguard/wait-for-it:latest
+      - equal:
+          path: spec.template.spec.initContainers[0].args
+          value:
+            - "-h"
+            - "db.svc"
+            - "-p"
+            - "3307"
+            - "-t"
+            - "120"
+
+  - it: no wait_for.db.host -> no initContainers
+    template: db-sync.yaml
+    set:
+      job.db_sync.enabled: true
+      job.db_sync.command: [m]
+      job.db_sync.args: [s]
+    asserts:
+      - notExists:
+          path: spec.template.spec.initContainers
+
+  - it: conf.envSecretRef wires envFrom on the Job container
+    template: db-sync.yaml
+    set:
+      job.db_sync.enabled: true
+      job.db_sync.command: [m]
+      job.db_sync.args: [s]
+      conf.envSecretRef: consumer-secrets
+    asserts:
+      - equal:
+          path: spec.template.spec.containers[0].envFrom[0].secretRef.name
+          value: consumer-secrets
+
+  - it: vault.enabled=false omits vault annotations on Job pod
+    template: db-sync.yaml
+    set:
+      job.db_sync.enabled: true
+      job.db_sync.command: [m]
+      job.db_sync.args: [s]
+      vault.enabled: false
+    asserts:
+      - notExists:
+          path: spec.template.metadata.annotations["vault.hashicorp.com/agent-inject"]
+
+  - it: vault.enabled=true adds vault annotations on Job pod
+    template: db-sync.yaml
+    set:
+      job.db_sync.enabled: true
+      job.db_sync.command: [m]
+      job.db_sync.args: [s]
+      vault.enabled: true
+    asserts:
+      - equal:
+          path: spec.template.metadata.annotations["vault.hashicorp.com/agent-inject"]
+          value: "true"
+
+  - it: Job mounts the chart configmap at /etc/<name>/
+    template: db-sync.yaml
+    set:
+      job.db_sync.enabled: true
+      job.db_sync.command: [m]
+      job.db_sync.args: [s]
+    asserts:
+      - equal:
+          path: spec.template.spec.containers[0].volumeMounts[0].name
+          value: my-consumer
+      - equal:
+          path: spec.template.spec.containers[0].volumeMounts[0].mountPath
+          value: /etc/consumer/
+      - contains:
+          path: spec.template.spec.volumes
+          content:
+            name: my-consumer
+            configMap:
+              name: my-consumer

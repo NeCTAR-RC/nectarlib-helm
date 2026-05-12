@@ -1,0 +1,51 @@
+suite: nectarlib.oslo_policy
+templates:
+  - config-map.yaml
+release:
+  name: my
+  namespace: testing
+
+# nectarlib.oslo_policy renders into the chart's main ConfigMap under
+# data["policy.yaml"]. Tests exercise it via the rendered ConfigMap.
+
+tests:
+  - it: empty when .Values.oslo_policy is unset
+    template: config-map.yaml
+    asserts:
+      - equal:
+          path: data["policy.yaml"]
+          value: ""
+
+  - it: 'each entry rendered as quoted "key": "value"'
+    template: config-map.yaml
+    set:
+      oslo_policy:
+        rule_a: "role:admin"
+        rule_b: "rule:rule_a"
+    asserts:
+      - matchRegex:
+          path: data["policy.yaml"]
+          pattern: '"rule_a": "role:admin"'
+      - matchRegex:
+          path: data["policy.yaml"]
+          pattern: '"rule_b": "rule:rule_a"'
+
+  - it: values containing single quotes are safely double-quoted
+    template: config-map.yaml
+    set:
+      oslo_policy:
+        is_admin: "role:admin or project_id:%(project_id)s"
+    asserts:
+      - matchRegex:
+          path: data["policy.yaml"]
+          pattern: '"is_admin": "role:admin or project_id:%\(project_id\)s"'
+
+  - it: keys containing special chars are quoted (regression for commit c005533)
+    template: config-map.yaml
+    set:
+      oslo_policy:
+        "compute:create:attach_network": "rule:admin_required"
+    asserts:
+      - matchRegex:
+          path: data["policy.yaml"]
+          pattern: '"compute:create:attach_network": "rule:admin_required"'

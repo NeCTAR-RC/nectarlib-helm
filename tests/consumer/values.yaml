@@ -1,0 +1,89 @@
+image:
+  tag: ""
+  pullPolicy: IfNotPresent
+imagePullSecrets: []
+
+podSecurityContext: {}
+securityContext: {}
+nodeSelector: {}
+tolerations: []
+
+serviceAccount:
+  create: true
+  name: ""
+  annotations: {}
+
+service:
+  type: ClusterIP
+
+autoscaling:
+  enabled: false
+
+vault:
+  enabled: false
+
+conf:
+  filename: ""
+  envSecretRef: ""
+
+oslo_policy: {}
+
+# Extra keys merged into the rendered ConfigMap via the consumer's
+# `consumer.configmap` template. Used by the configmap test suite to exercise
+# the merge behaviour in nectarlib.util.merge.
+extraConfigData: {}
+
+wait_for:
+  db:
+    host: ""
+    port: 3306
+
+job:
+  db_sync:
+    enabled: false
+    command: []
+    args: []
+
+api:
+  name: api
+  replicaCount: 1
+  image:
+    repository: example/test-api
+  port: 9000
+  port_name: http
+  protocol: TCP
+  healthchecks: true
+  healthcheck_path: /healthcheck
+  volumes: []
+  volume_mounts: []
+  resources: {}
+  pdb:
+    enabled: false
+    minAvailable: 1
+  ingress:
+    enabled: false
+  gateway:
+    enabled: false
+  podAffinityPreset: ""
+  podAntiAffinityPreset: soft
+  nodeAffinityPreset:
+    type: ""
+    key: ""
+    values: []
+
+worker:
+  name: worker
+  replicaCount: 1
+  image:
+    repository: example/test-worker
+  volumes: []
+  volume_mounts: []
+  resources: {}
+  pdb:
+    enabled: false
+  podAffinityPreset: ""
+  podAntiAffinityPreset: soft
+  nodeAffinityPreset:
+    type: ""
+    key: ""
+    values: []

@@ -1,0 +1,101 @@
+suite: nectarlib.configmap
+templates:
+  - config-map.yaml
+release:
+  name: my
+  namespace: testing
+
+tests:
+  - it: renders a ConfigMap with chart-named conf and policy.yaml keys
+    template: config-map.yaml
+    asserts:
+      - hasDocuments:
+          count: 1
+      - isKind:
+          of: ConfigMap
+      - equal:
+          path: metadata.name
+          value: my-consumer
+      - exists:
+          path: data["consumer.conf"]
+      - exists:
+          path: data["policy.yaml"]
+
+  - it: ConfigMap is registered as a Helm pre-install/pre-upgrade hook
+    template: config-map.yaml
+    asserts:
+      - equal:
+          path: metadata.annotations["helm.sh/hook"]
+          value: pre-install,pre-upgrade
+      - equal:
+          path: metadata.annotations["helm.sh/hook-weight"]
+          value: "2"
+
+  - it: consumer-conf body renders into <chart-name>.conf
+    template: config-map.yaml
+    asserts:
+      - matchRegex:
+          path: data["consumer.conf"]
+          pattern: "\\[DEFAULT\\]"
+      - matchRegex:
+          path: data["consumer.conf"]
+          pattern: "debug = false"
+
+  - it: conf.filename overrides the default <chart-name>.conf key
+    template: config-map.yaml
+    set:
+      conf.filename: custom.conf
+    asserts:
+      - exists:
+          path: data["custom.conf"]
+      - notExists:
+          path: data["consumer.conf"]
+
+  - it: oslo_policy entries render into policy.yaml
+    template: config-map.yaml
+    set:
+      oslo_policy:
+        admin_or_owner: "role:admin or project_id:%(project_id)s"
+        cloud_admin: "role:cloud_admin"
+    asserts:
+      - matchRegex:
+          path: data["policy.yaml"]
+          pattern: '"admin_or_owner": "role:admin or project_id:%\(project_id\)s"'
+      - matchRegex:
+          path: data["policy.yaml"]
+          pattern: '"cloud_admin": "role:cloud_admin"'
+
+  - it: oslo_policy unset leaves policy.yaml empty
+    template: config-map.yaml
+    asserts:
+      - equal:
+          path: data["policy.yaml"]
+          value: ""
+
+  - it: extra data keys from consumer template are deep-merged in
+    template: config-map.yaml
+    set:
+      extraConfigData:
+        api-paste.ini: "extra-paste"
+        rootwrap.conf: "rootwrap"
+    asserts:
+      - equal:
+          path: data["api-paste.ini"]
+          value: extra-paste
+      - equal:
+          path: data["rootwrap.conf"]
+          value: rootwrap
+      - exists:
+          path: data["consumer.conf"]
+      - exists:
+          path: data["policy.yaml"]
+
+  - it: consumer key wins on collision (sprig merge — first-arg wins)
+    template: config-map.yaml
+    set:
+      extraConfigData:
+        consumer.conf: "consumer-override"
+    asserts:
+      - equal:
+          path: data["consumer.conf"]
+          value: consumer-override

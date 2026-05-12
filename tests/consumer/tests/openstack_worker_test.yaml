@@ -1,0 +1,275 @@
+suite: nectarlib.openstack_worker
+templates:
+  - worker.yaml
+  - config-map.yaml
+release:
+  name: my
+  namespace: testing
+
+tests:
+  - it: worker renders Deployment + NetworkPolicy by default (no PDB)
+    template: worker.yaml
+    asserts:
+      - hasDocuments:
+          count: 2
+      - documentSelector:
+          path: kind
+          value: Deployment
+        equal:
+          path: metadata.name
+          value: my-consumer-worker
+      - documentSelector:
+          path: kind
+          value: NetworkPolicy
+        equal:
+          path: metadata.name
+          value: my-consumer-worker
+
+  - it: worker has component label = worker
+    template: worker.yaml
+    documentSelector:
+      path: kind
+      value: Deployment
+    asserts:
+      - equal:
+          path: metadata.labels["app.kubernetes.io/component"]
+          value: worker
+      - equal:
+          path: spec.selector.matchLabels["app.kubernetes.io/component"]
+          value: worker
+      - equal:
+          path: spec.template.metadata.labels["app.kubernetes.io/component"]
+          value: worker
+
+  - it: worker uses image.repository:Chart.AppVersion
+    template: worker.yaml
+    documentSelector:
+      path: kind
+      value: Deployment
+    asserts:
+      - equal:
+          path: spec.template.spec.containers[0].image
+          value: example/test-worker:test
+
+  - it: worker NetworkPolicy denies ingress (egress only)
+    template: worker.yaml
+    documentSelector:
+      path: kind
+      value: NetworkPolicy
+    asserts:
+      - equal:
+          path: spec.policyTypes
+          value: [Ingress, Egress]
+      - equal:
+          path: spec.egress
+          value: [{}]
+      - notExists:
+          path: spec.ingress
+
+  - it: worker replicaCount honored when autoscaling disabled
+    template: worker.yaml
+    set:
+      worker.replicaCount: 5
+    documentSelector:
+      path: kind
+      value: Deployment
+    asserts:
+      - equal:
+          path: spec.replicas
+          value: 5
+
+  - it: worker replicas omitted when autoscaling enabled
+    template: worker.yaml
+    set:
+      autoscaling.enabled: true
+    documentSelector:
+      path: kind
+      value: Deployment
+    asserts:
+      - notExists:
+          path: spec.replicas
+
+  - it: worker.pdb.enabled renders PodDisruptionBudget
+    template: worker.yaml
+    set:
+      worker.pdb.enabled: true
+      worker.pdb.minAvailable: 2
+    asserts:
+      - hasDocuments:
+          count: 3
+      - documentSelector:
+          path: kind
+          value: PodDisruptionBudget
+        equal:
+          path: metadata.name
+          value: my-consumer-worker
+      - documentSelector:
+          path: kind
+          value: PodDisruptionBudget
+        equal:
+          path: spec.minAvailable
+          value: 2
+      - documentSelector:
+          path: kind
+          value: PodDisruptionBudget
+        equal:
+          path: spec.selector.matchLabels["app.kubernetes.io/component"]
+          value: worker
+
+  - it: worker.name override changes suffix + component label
+    template: worker.yaml
+    set:
+      worker.name: cleaner
+    asserts:
+      - documentSelector:
+          path: kind
+          value: Deployment
+        equal:
+          path: metadata.name
+          value: my-consumer-cleaner
+      - documentSelector:
+          path: kind
+          value: NetworkPolicy
+        equal:
+          path: metadata.name
+          value: my-consumer-cleaner
+      - documentSelector:
+          path: kind
+          value: Deployment
+        equal:
+          path: metadata.labels["app.kubernetes.io/component"]
+          value: cleaner
+
+  - it: worker command override
+    template: worker.yaml
+    set:
+      worker.command: ["/usr/bin/worker", "--threads=4"]
+    documentSelector:
+      path: kind
+      value: Deployment
+    asserts:
+      - equal:
+          path: spec.template.spec.containers[0].command
+          value: ["/usr/bin/worker", "--threads=4"]
+
+  - it: worker conf.envSecretRef wires envFrom
+    template: worker.yaml
+    set:
+      conf.envSecretRef: consumer-secrets
+    documentSelector:
+      path: kind
+      value: Deployment
+    asserts:
+      - equal:
+          path: spec.template.spec.containers[0].envFrom[0].secretRef.name
+          value: consumer-secrets
+
+  - it: worker mounts the chart configmap at /etc/<name>/
+    template: worker.yaml
+    documentSelector:
+      path: kind
+      value: Deployment
+    asserts:
+      - equal:
+          path: spec.template.spec.containers[0].volumeMounts[0].name
+          value: my-consumer
+      - equal:
+          path: spec.template.spec.containers[0].volumeMounts[0].mountPath
+          value: /etc/consumer/
+      - contains:
+          path: spec.template.spec.volumes
+          content:
+            name: my-consumer
+            configMap:
+              name: my-consumer
+
+  - it: worker extra volumes + volume_mounts merge in
+    template: worker.yaml
+    set:
+      worker.volumes:
+        - name: scratch
+          emptyDir: {}
+      worker.volume_mounts:
+        - name: scratch
+          mountPath: /scratch
+    documentSelector:
+      path: kind
+      value: Deployment
+    asserts:
+      - contains:
+          path: spec.template.spec.volumes
+          content:
+            name: scratch
+            emptyDir: {}
+      - contains:
+          path: spec.template.spec.containers[0].volumeMounts
+          content:
+            name: scratch
+            mountPath: /scratch
+
+  - it: worker vault.enabled=false omits vault annotations
+    template: worker.yaml
+    set:
+      vault.enabled: false
+    documentSelector:
+      path: kind
+      value: Deployment
+    asserts:
+      - notExists:
+          path: spec.template.metadata.annotations["vault.hashicorp.com/agent-inject"]
+
+  - it: worker vault.enabled=true includes vault annotations
+    template: worker.yaml
+    set:
+      vault.enabled: true
+    documentSelector:
+      path: kind
+      value: Deployment
+    asserts:
+      - equal:
+          path: spec.template.metadata.annotations["vault.hashicorp.com/agent-inject"]
+          value: "true"
+
+  - it: explicit worker.affinity overrides preset
+    template: worker.yaml
+    set:
+      worker.affinity:
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+              - matchExpressions:
+                  - key: dedicated
+                    operator: In
+                    values: [worker]
+    documentSelector:
+      path: kind
+      value: Deployment
+    asserts:
+      - equal:
+          path: spec.template.spec.affinity.nodeAffinity.requiredDuringSchedulingIgnoredDuringExecution.nodeSelectorTerms[0].matchExpressions[0].key
+          value: dedicated
+      - notExists:
+          path: spec.template.spec.affinity.podAntiAffinity
+
+  - it: worker checksum/config annotation is sha256
+    template: worker.yaml
+    documentSelector:
+      path: kind
+      value: Deployment
+    asserts:
+      - matchRegex:
+          path: spec.template.metadata.annotations["checksum/config"]
+          pattern: "^[a-f0-9]{64}$"
+
+  - it: worker imagePullSecrets propagated to pod
+    template: worker.yaml
+    set:
+      imagePullSecrets:
+        - name: registry-creds
+    documentSelector:
+      path: kind
+      value: Deployment
+    asserts:
+      - equal:
+          path: spec.template.spec.imagePullSecrets[0].name
+          value: registry-creds

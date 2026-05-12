@@ -1,0 +1,11 @@
+apiVersion: v2
+name: consumer
+description: Test fixture that consumes the nectarlib library chart.
+type: application
+version: 0.1.0
+appVersion: "test"
+
+dependencies:
+  - name: nectarlib
+    version: ">=0.0.0-0"
+    repository: "file://../.."

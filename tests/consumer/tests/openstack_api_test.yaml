@@ -396,6 +396,44 @@ tests:
             name: my-consumer-uwsgi
             mountPath: /etc/uwsgi/
 
+  - it: uwsgi.enabled defaults command to uwsgi /etc/uwsgi/uwsgi.ini
+    template: api.yaml
+    set:
+      api.uwsgi.enabled: true
+      api.uwsgi.module: blazar.api.wsgi:application
+    documentSelector:
+      path: kind
+      value: Deployment
+    asserts:
+      - equal:
+          path: spec.template.spec.containers[0].command
+          value:
+            - uwsgi
+            - /etc/uwsgi/uwsgi.ini
+
+  - it: explicit api.command wins over uwsgi default
+    template: api.yaml
+    set:
+      api.uwsgi.enabled: true
+      api.uwsgi.module: blazar.api.wsgi:application
+      api.command: ["/bin/custom"]
+    documentSelector:
+      path: kind
+      value: Deployment
+    asserts:
+      - equal:
+          path: spec.template.spec.containers[0].command
+          value: ["/bin/custom"]
+
+  - it: uwsgi.enabled=false leaves command unset (no default)
+    template: api.yaml
+    documentSelector:
+      path: kind
+      value: Deployment
+    asserts:
+      - notExists:
+          path: spec.template.spec.containers[0].command
+
   - it: extra_container adds a sidecar
     template: api.yaml
     set:

@@ -48,6 +48,10 @@ spec:
           {{- if $service.command }}
           command:
             {{- toYaml $service.command | nindent 12 }}
+          {{- else if $uwsgi.enabled }}
+          command:
+            - uwsgi
+            - /etc/uwsgi/uwsgi.ini
           {{- end }}
           {{- if $apache.enabled }}
           env:

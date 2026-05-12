@@ -43,8 +43,10 @@ spec:
             {{- toYaml .Values.securityContext | nindent 12 }}
           image: "{{ $service.image.repository }}:{{ .Values.image.tag | default .Chart.AppVersion }}"
           imagePullPolicy: {{ .Values.image.pullPolicy }}
+          {{- if $service.command }}
           command:
             {{- toYaml $service.command | nindent 12 }}
+          {{- end }}
           {{- if .Values.conf.envSecretRef }}
           envFrom:
           - secretRef:

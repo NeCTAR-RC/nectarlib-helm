@@ -250,47 +250,6 @@ tests:
           path: spec.selector.matchLabels["app.kubernetes.io/component"]
           value: api
 
-  - it: Ingress rendered when enabled with tls + hosts
-    template: api.yaml
-    set:
-      api.ingress.enabled: true
-      api.ingress.className: nginx
-      api.ingress.annotations:
-        cert-manager.io/cluster-issuer: letsencrypt
-      api.ingress.tls:
-        - hosts: [example.test]
-          secretName: example-tls
-      api.ingress.hosts:
-        - host: example.test
-          paths:
-            - path: /
-              pathType: Prefix
-    documentSelector:
-      path: kind
-      value: Ingress
-    asserts:
-      - equal:
-          path: metadata.name
-          value: my-consumer-api
-      - equal:
-          path: spec.ingressClassName
-          value: nginx
-      - equal:
-          path: metadata.annotations["cert-manager.io/cluster-issuer"]
-          value: letsencrypt
-      - equal:
-          path: spec.tls[0].secretName
-          value: example-tls
-      - equal:
-          path: spec.rules[0].host
-          value: example.test
-      - equal:
-          path: spec.rules[0].http.paths[0].backend.service.name
-          value: my-consumer-api
-      - equal:
-          path: spec.rules[0].http.paths[0].backend.service.port.number
-          value: 9000
-
   - it: HTTPRoute rendered when gateway.enabled (default kind)
     template: api.yaml
     set:

@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## What this is
 
-A Helm **library chart** (`type: library` in `Chart.yaml`) — it produces no resources on its own. It is consumed as a dependency by per-service Nectar/OpenStack charts (blazar, nova, etc.), which `include` its named templates to render their Deployments, Services, ConfigMaps, PDBs, Ingresses, HTTPRoutes, NetworkPolicies, and db-sync Jobs.
+A Helm **library chart** (`type: library` in `Chart.yaml`) — it produces no resources on its own. It is consumed as a dependency by per-service Nectar/OpenStack charts (blazar, nova, etc.), which `include` its named templates to render their Deployments, Services, ConfigMaps, PDBs, HTTPRoutes, NetworkPolicies, and db-sync Jobs.
 
 Bumping `version:` in `Chart.yaml` is required for any template change to flow downstream — consumer charts pin to a version.
 
@@ -64,7 +64,7 @@ The consumer must also place a `templates/config-map.yaml` that calls `nectarlib
 
 ## Per-service values surface
 
-Each `$service` dict (e.g. `.Values.api`) commonly carries: `name`, `image.repository`, `command`, `replicaCount`, `port`/`port_name`/`protocol`, `healthchecks` (set string `"false"` to disable), `healthcheck_path`, `volumes`, `volume_mounts`, `resources`, `extra_container`, `pdb.{enabled,minAvailable}`, `apache.{enabled,...}`, `uwsgi.{enabled,module,...}`, `ingress.{enabled,...}`, `gateway.{enabled,kind,parentRefs,hostnames,timeouts,...}`, `podAffinityPreset`/`podAntiAffinityPreset`/`nodeAffinityPreset`, `affinity` (overrides presets).
+Each `$service` dict (e.g. `.Values.api`) commonly carries: `name`, `image.repository`, `command`, `replicaCount`, `port`/`port_name`/`protocol`, `healthchecks` (set string `"false"` to disable), `healthcheck_path`, `volumes`, `volume_mounts`, `resources`, `extra_container`, `pdb.{enabled,minAvailable}`, `apache.{enabled,...}`, `uwsgi.{enabled,module,...}`, `gateway.{enabled,kind,parentRefs,hostnames,timeouts,...}`, `podAffinityPreset`/`podAntiAffinityPreset`/`nodeAffinityPreset`, `affinity` (overrides presets).
 
 When `apache.enabled` or `uwsgi.enabled` is set, an extra ConfigMap is rendered (`{fullname}-{apiName}-{apache|uwsgi}`) holding `wsgi-{fullname}.conf` or `uwsgi.ini`, generated from `_apache_wsgi.tpl` / `_uwsgi_ini.tpl`, and mounted into the api pod.
 

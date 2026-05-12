@@ -3,8 +3,8 @@
 A Helm **library chart** (`type: library`) providing the common templates used
 by Nectar's per-service OpenStack charts (blazar, nova, etc.). It produces no
 resources on its own — consumer charts depend on it and `include` its named
-templates to render their Deployments, Services, ConfigMaps, PDBs, Ingresses,
-HTTPRoutes, NetworkPolicies and db-sync Jobs.
+templates to render their Deployments, Services, ConfigMaps, PDBs, HTTPRoutes,
+NetworkPolicies and db-sync Jobs.
 
 Repository: <https://github.com/NeCTAR-RC/nectarlib-helm> (mirror of the
 canonical Gerrit project `NeCTAR-RC/nectarlib-helm`).
@@ -85,7 +85,7 @@ oslo_policy:
 
 | Template                  | Renders                                                                                     |
 | ------------------------- | ------------------------------------------------------------------------------------------- |
-| `nectarlib.openstack_api` | Deployment + Service + NetworkPolicy, plus PDB / Ingress / HTTPRoute / Apache or uWSGI ConfigMap when enabled. |
+| `nectarlib.openstack_api` | Deployment + Service + NetworkPolicy, plus PDB / HTTPRoute / Apache or uWSGI ConfigMap when enabled. |
 | `nectarlib.openstack_worker` | Deployment + NetworkPolicy for a worker.                                                 |
 | `nectarlib.configmap`     | The chart's main ConfigMap (`<chart-name>.conf`, `policy.yaml`, merged consumer keys).      |
 | `nectarlib.job_db_sync`   | A `db-sync` Job (Helm pre-install / pre-upgrade hook).                                      |
@@ -110,7 +110,6 @@ Each `$service` dict (e.g. `.Values.api`, `.Values.worker`) commonly carries:
 | `pdb.enabled` / `pdb.minAvailable`  | `false` / `1` | Renders a PodDisruptionBudget when enabled.                          |
 | `apache.enabled`                    | `false`       | Renders a `wsgi-<fullname>.conf` ConfigMap and mounts it on the api pod. |
 | `uwsgi.enabled` / `uwsgi.module`    | `false`       | Renders a `uwsgi.ini` ConfigMap and mounts it on the api pod.        |
-| `ingress.{enabled,className,tls,hosts,annotations}` | `enabled: false` | Standard `networking.k8s.io/v1` Ingress. |
 | `gateway.{enabled,kind,apiVersion,parentRefs,hostnames,timeouts,annotations}` | `enabled: false` | Gateway API route (defaults to `HTTPRoute`). |
 | `podAffinityPreset` / `podAntiAffinityPreset` / `nodeAffinityPreset` | `""` / `soft` / `{}` | Bitnami-style affinity presets. |
 | `affinity`                          | unset         | Raw `affinity:` block — overrides presets when set.                  |

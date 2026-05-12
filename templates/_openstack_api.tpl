@@ -240,48 +240,6 @@ spec:
 
 {{ end }}
 
-{{ if $service.ingress.enabled }}
-{{- $fullName := include "nectarlib.fullname" . -}}
-{{ $svcPort := $service.port | default 80 }}
----
-apiVersion: networking.k8s.io/v1
-kind: Ingress
-metadata:
-  name: {{ $fullName }}-{{ $apiName }}
-  labels:
-    {{- include "nectarlib.labels" . | nindent 4 }}
-  {{- with $service.ingress.annotations }}
-  annotations:
-    {{- toYaml . | nindent 4 }}
-  {{- end }}
-spec:
-  ingressClassName: {{ $service.ingress.className }}
-  {{- if $service.ingress.tls }}
-  tls:
-    {{- range $service.ingress.tls }}
-    - hosts:
-        {{- range .hosts }}
-        - {{ . | quote }}
-        {{- end }}
-      secretName: {{ .secretName }}
-    {{- end }}
-  {{- end }}
-  rules:
-    {{- range $service.ingress.hosts }}
-    - host: {{ .host | quote }}
-      http:
-        paths:
-          {{- range .paths }}
-          - path: {{ .path }}
-            pathType: {{ .pathType | default "Prefix" }}
-            backend:
-              service:
-                name: {{ $fullName }}-{{ $apiName }}
-                port:
-                  number: {{ $svcPort }}
-          {{- end }}
-    {{- end }}
-{{- end }}
 {{ if $service.gateway.enabled  }}
 {{- $fullName := include "nectarlib.fullname" . -}}
 {{ $svcPort := $service.port | default 80 }}

@@ -3,6 +3,8 @@
 {{- $service := index . 2 }}
 {{- with index . 1 }}
 {{- $apiName := $service.name | default "api" -}}
+{{- $apache := $service.apache | default dict -}}
+{{- $uwsgi := $service.uwsgi | default dict -}}
 ---
 apiVersion: apps/v1
 kind: Deployment
@@ -47,7 +49,7 @@ spec:
           command:
             {{- toYaml $service.command | nindent 12 }}
           {{- end }}
-          {{- if $service.apache.enabled }}
+          {{- if $apache.enabled }}
           env:
             - name: APACHE_LOG_DIR
               value: /apache/
@@ -90,11 +92,15 @@ spec:
             {{- with $service.volume_mounts }}
             {{- toYaml . | nindent 12 }}
             {{- end }}
-            {{- if $service.apache.enabled }}
+            {{- if $apache.enabled }}
             - name: {{ include "nectarlib.fullname" . }}-apache
               mountPath: "/etc/apache2/sites-enabled/"
             - name: {{ include "nectarlib.fullname" . }}-apache-work
               mountPath: "/apache/"
+            {{- end }}
+            {{- if $uwsgi.enabled }}
+            - name: {{ include "nectarlib.fullname" . }}-uwsgi
+              mountPath: "/etc/uwsgi/"
             {{- end }}
           resources:
             {{- toYaml $service.resources | nindent 12 }}
@@ -129,12 +135,17 @@ spec:
         {{- with $service.volumes }}
         {{- toYaml . | nindent 8 }}
         {{- end }}
-        {{- if $service.apache.enabled }}
+        {{- if $apache.enabled }}
         - name: {{ include "nectarlib.fullname" . }}-apache
           configMap:
             name: {{ include "nectarlib.fullname" . }}-{{ $apiName }}-apache
         - name: {{ include "nectarlib.fullname" . }}-apache-work
           emptyDir: {}
+        {{- end }}
+        {{- if $uwsgi.enabled }}
+        - name: {{ include "nectarlib.fullname" . }}-uwsgi
+          configMap:
+            name: {{ include "nectarlib.fullname" . }}-{{ $apiName }}-uwsgi
         {{- end }}
       {{- with .Values.nodeSelector }}
       nodeSelector:
@@ -177,7 +188,7 @@ spec:
     app.kubernetes.io/component: {{ $apiName }}
 
 
-{{- if $service.apache.enabled }}
+{{- if $apache.enabled }}
 ---
 apiVersion: v1
 kind: ConfigMap
@@ -189,6 +200,21 @@ metadata:
 data:
   wsgi-{{ include "nectarlib.fullname" . }}.conf: |-
 {{ include "nectarlib.apache_wsgi" (list $ . $service) | indent 4 }}
+
+{{- end }}
+
+{{- if $uwsgi.enabled }}
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "nectarlib.fullname" . }}-{{ $apiName }}-uwsgi
+  annotations:
+    "helm.sh/hook": pre-install,pre-upgrade
+    "helm.sh/hook-weight": "2"
+data:
+  uwsgi.ini: |-
+{{ include "nectarlib.uwsgi_ini" (list $ . $service) | indent 4 }}
 
 {{- end }}
 

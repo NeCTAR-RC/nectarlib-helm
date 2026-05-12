@@ -4,4 +4,4 @@ description: Library for common nectar things
 type: library
 sources:
   - https://github.com/NeCTAR-RC/nectarlib-helm.git
-version: 3.2.0
+version: 3.3.0

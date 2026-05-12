@@ -317,7 +317,7 @@ spec:
           name: {{ $fullName }}-{{ $apiName }}
           port: {{ $svcPort }}
           weight: 1
-      {{ if ne $service.gateway.kind "UDPRoute" }}
+      {{ if eq (default "HTTPRoute" $service.gateway.kind) "HTTPRoute" }}
       matches:
         - path:
             type: PathPrefix

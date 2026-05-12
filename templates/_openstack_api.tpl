@@ -278,7 +278,6 @@ spec:
           {{- end }}
     {{- end }}
 {{- end }}
----
 {{ if $service.gateway.enabled  }}
 {{- $fullName := include "nectarlib.fullname" . -}}
 {{ $svcPort := $service.port }}

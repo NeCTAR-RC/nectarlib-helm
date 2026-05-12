@@ -108,7 +108,7 @@ spec:
         - name: {{ $service.extra_container.name }}
           securityContext:
             {{- toYaml .Values.securityContext | nindent 12 }}
-          image: "{{ $service.extra_container.image.repository }}:{{ .Values.image.tag | default .Chart.AppVersion }}"
+          image: "{{ $service.extra_container.image.repository }}:{{ $service.extra_container.image.tag | default .Values.image.tag | default .Chart.AppVersion }}"
           imagePullPolicy: {{ .Values.image.pullPolicy }}
           {{- if $service.extra_container.command }}
           command:

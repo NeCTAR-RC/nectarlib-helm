@@ -110,7 +110,7 @@ spec:
             {{- toYaml .Values.securityContext | nindent 12 }}
           image: "{{ $service.extra_container.image.repository }}:{{ .Values.image.tag | default .Chart.AppVersion }}"
           imagePullPolicy: {{ .Values.image.pullPolicy }}
-          {{- if $service.command }}
+          {{- if $service.extra_container.command }}
           command:
             {{- toYaml $service.extra_container.command | nindent 12 }}
           {{- end }}

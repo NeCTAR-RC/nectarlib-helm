@@ -78,6 +78,10 @@ spec:
             httpGet:
               path: {{ $service.healthcheck_path | default "/healthcheck" }}
               port: {{ $service.port_name | default "http" }}
+          readinessProbe:
+            httpGet:
+              path: {{ $service.healthcheck_path | default "/healthcheck" }}
+              port: {{ $service.port_name | default "http" }}
           startupProbe:
             httpGet:
               path: {{ $service.healthcheck_path | default "/healthcheck" }}

@@ -6,10 +6,10 @@ The library expects three templates named after the consumer chart:
 This fixture's chart name is "consumer".
 */}}
 
-{{- define "consumer-conf" }}
+{{- define "consumer-conf" -}}
 [DEFAULT]
 debug = false
-{{- end }}
+{{- end -}}
 
 {{/*
 The fixture's `consumer.configmap` extends the base ConfigMap with optional

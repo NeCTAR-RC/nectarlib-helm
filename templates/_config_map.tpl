@@ -18,10 +18,10 @@ metadata:
     "helm.sh/hook-weight": "2"
 data:
   {{- include "confFileName" . | indent 2 }}: |-
-{{- include $confTemplate . | indent 4 }}
+    {{- include $confTemplate . | trim | nindent 4 }}
 
   policy.yaml: |-
-{{- include "nectarlib.oslo_policy" . | indent 4 }}
+    {{- include "nectarlib.oslo_policy" . | trim | nindent 4 }}
 {{- end -}}
 {{- define "nectarlib.configmap" -}}
 {{- include "nectarlib.util.merge" (append . "nectarlib.config-map.tpl") -}}

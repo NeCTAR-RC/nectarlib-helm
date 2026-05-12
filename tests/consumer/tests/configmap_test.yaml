@@ -41,6 +41,17 @@ tests:
           path: data["consumer.conf"]
           pattern: "debug = false"
 
+  # The fixture's consumer-conf uses {{- define ... -}} (both ends trimmed),
+  # i.e. no leading newline — matching the README example. The library
+  # must still produce a clean conf body (no garbled first line, no
+  # leading blank). Regression for the trim+nindent fix in _config_map.tpl.
+  - it: conf body has no leading whitespace or blank line
+    template: config-map.yaml
+    asserts:
+      - matchRegex:
+          path: data["consumer.conf"]
+          pattern: '^\[DEFAULT\]'
+
   - it: conf.filename overrides the default <chart-name>.conf key
     template: config-map.yaml
     set:

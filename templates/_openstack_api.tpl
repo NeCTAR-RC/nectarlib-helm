@@ -179,7 +179,7 @@ spec:
   externalTrafficPolicy: Local
   {{- end }}
   ports:
-    - port: {{ $service.port }}
+    - port: {{ $service.port | default 80 }}
       targetPort: {{ $service.port_name | default "http" }}
       protocol: {{ $service.protocol | default "TCP" }}
       name: {{ $service.port_name | default "http" }}
@@ -238,7 +238,7 @@ spec:
 
 {{ if $service.ingress.enabled }}
 {{- $fullName := include "nectarlib.fullname" . -}}
-{{ $svcPort := $service.port }}
+{{ $svcPort := $service.port | default 80 }}
 ---
 apiVersion: networking.k8s.io/v1
 kind: Ingress
@@ -280,7 +280,7 @@ spec:
 {{- end }}
 {{ if $service.gateway.enabled  }}
 {{- $fullName := include "nectarlib.fullname" . -}}
-{{ $svcPort := $service.port }}
+{{ $svcPort := $service.port | default 80 }}
 ---
 apiVersion: {{ $service.gateway.apiVersion | default "gateway.networking.k8s.io/v1" }}
 kind: {{ $service.gateway.kind | default "HTTPRoute" }}
@@ -341,7 +341,7 @@ spec:
   - {}
   ingress:
     - ports:
-        - port: {{ $service.port }}
+        - port: {{ $service.port | default 80 }}
           protocol: {{ $service.protocol | default "TCP" }}
 
 {{- end -}}

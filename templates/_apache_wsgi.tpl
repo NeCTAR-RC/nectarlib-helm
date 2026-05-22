@@ -25,7 +25,7 @@ WSGISocketPrefix /apache/wsgi
   ErrorLog /dev/stdout
 
   ServerSignature Off
-  LogFormat "%{X-Forwarded-For}i %l %u %t \"%r\" %>s %b %D \"%{Referer}i\" \"%{User-Agent}i\"" logformat
+  LogFormat "%{X-Forwarded-For}i %l %u %{%Y-%m-%dT%H:%M:%S}t \"%r\" %>s %b %D \"%{Referer}i\" \"%{User-Agent}i\"" logformat
   WSGIApplicationGroup %{GLOBAL}
   WSGIDaemonProcess {{ .Chart.Name }} group={{ .Chart.Name }} processes={{ $service.apache.processes | default "4" }} threads={{ $service.apache.threads | default "2" }} user={{ .Chart.Name }} {{ $service.apache.extra_config | default "" }}
   WSGIProcessGroup {{ .Chart.Name }}

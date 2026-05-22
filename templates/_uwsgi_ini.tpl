@@ -27,7 +27,7 @@ worker-reload-mercy = {{ $service.uwsgi.timeout | default "80" }}
 log-master = true
 threaded-logger = true
 log-x-forwarded-for = true
-log-format = {"time":"%(ltime)", "remote_addr":"%(addr)", "method":"%(method)", "uri":"%(uri)", "proto":"%(proto)", "status":%(status), "res_size":%(size), "req_body_size":%(cl), "res_time_ms":%(msecs)}
+log-format = {"time":"%(strftime:%Y-%m-%dT%H:%M:%S)","remote_addr":"%(addr)", "method":"%(method)", "uri":"%(uri)", "proto":"%(proto)", "status":%(status), "res_size":%(size), "req_body_size":%(cl), "res_time_ms":%(msecs)}
 
 {{- end -}}
 {{- end -}}

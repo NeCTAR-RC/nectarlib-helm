@@ -47,6 +47,10 @@ spec:
           command:
             {{- toYaml $service.command | nindent 12 }}
           {{- end }}
+          {{- with include "nectarlib.sentry_env" (list . $service $workerName (.Values.image.tag | default .Chart.AppVersion)) | trim }}
+          env:
+            {{- . | nindent 12 }}
+          {{- end }}
           {{- if .Values.conf.envSecretRef }}
           envFrom:
           - secretRef:

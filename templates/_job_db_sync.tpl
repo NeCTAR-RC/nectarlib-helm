@@ -52,6 +52,10 @@ spec:
             {{- toYaml .Values.job.db_sync.command | nindent 12 }}
           args:
             {{- toYaml .Values.job.db_sync.args | nindent 12 }}
+          {{- with include "nectarlib.sentry_env" (list . .Values.job.db_sync "db-sync" (.Values.image.tag | default .Chart.AppVersion)) | trim }}
+          env:
+            {{- . | nindent 12 }}
+          {{- end }}
           {{- if .Values.conf.envSecretRef }}
           envFrom:
           - secretRef:

@@ -1,0 +1,327 @@
+suite: nectarlib.sentry_env
+templates:
+  - api.yaml
+  - worker.yaml
+  - db-sync.yaml
+  - config-map.yaml
+release:
+  name: my
+  namespace: testing
+
+# The kolla images carry a sentry bootstrap shim that activates when
+# SENTRY_DSN is present in the container environment. The library injects
+# SENTRY_* env vars on every container when .Values.sentry carries a dsn
+# (or enabled: true, for a DSN delivered via conf.envSecretRef).
+
+tests:
+  - it: no sentry values -> no env block on api container
+    template: api.yaml
+    documentSelector:
+      path: kind
+      value: Deployment
+    asserts:
+      - notExists:
+          path: spec.template.spec.containers[0].env
+
+  - it: sentry.dsn switches on DSN, release and service tag
+    template: api.yaml
+    set:
+      sentry.dsn: https://key@glitchtip.example.org/1
+    documentSelector:
+      path: kind
+      value: Deployment
+    asserts:
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: SENTRY_DSN
+            value: https://key@glitchtip.example.org/1
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: SENTRY_RELEASE
+            value: consumer@test
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: SENTRY_TAGS
+            value: service:my-consumer-api
+
+  - it: sentry.enabled without dsn injects everything except SENTRY_DSN
+    template: api.yaml
+    set:
+      sentry.enabled: true
+    documentSelector:
+      path: kind
+      value: Deployment
+    asserts:
+      - notContains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: SENTRY_DSN
+          any: true
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: SENTRY_RELEASE
+            value: consumer@test
+
+  - it: sentry.env_file points the shim at a vault-injected env file
+    template: api.yaml
+    set:
+      sentry.enabled: true
+      sentry.env_file: /vault/secrets/sentry.env
+    documentSelector:
+      path: kind
+      value: Deployment
+    asserts:
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: SENTRY_ENV_FILE
+            value: /vault/secrets/sentry.env
+      - notContains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: SENTRY_DSN
+          any: true
+
+  - it: image.tag flows into the default SENTRY_RELEASE
+    template: api.yaml
+    set:
+      image.tag: "9.9.9"
+      sentry.enabled: true
+    documentSelector:
+      path: kind
+      value: Deployment
+    asserts:
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: SENTRY_RELEASE
+            value: consumer@9.9.9
+
+  - it: optional site-wide settings render when set
+    template: api.yaml
+    set:
+      sentry:
+        dsn: https://key@glitchtip.example.org/1
+        environment: production-melbourne
+        traces_sample_rate: "0.1"
+        enable_logs: true
+        ca_certs: /etc/ssl/certs/internal-ca.pem
+        debug: true
+    documentSelector:
+      path: kind
+      value: Deployment
+    asserts:
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: SENTRY_ENVIRONMENT
+            value: production-melbourne
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: SENTRY_TRACES_SAMPLE_RATE
+            value: "0.1"
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: SENTRY_ENABLE_LOGS
+            value: "1"
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: SENTRY_CA_CERTS
+            value: /etc/ssl/certs/internal-ca.pem
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: SENTRY_DEBUG
+            value: "1"
+
+  - it: optional settings omitted when unset
+    template: api.yaml
+    set:
+      sentry.dsn: https://key@glitchtip.example.org/1
+    documentSelector:
+      path: kind
+      value: Deployment
+    asserts:
+      - notContains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: SENTRY_ENVIRONMENT
+          any: true
+      - notContains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: SENTRY_TRACES_SAMPLE_RATE
+          any: true
+      - notContains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: SENTRY_ENABLE_LOGS
+          any: true
+      - notContains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: SENTRY_DEBUG
+          any: true
+      - notContains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: SENTRY_ENV_FILE
+          any: true
+
+  - it: site tags and per-service tags merge over the service tag, sorted by key
+    template: api.yaml
+    set:
+      sentry.dsn: https://key@glitchtip.example.org/1
+      sentry.tags:
+        az: melbourne
+      api.sentry.tags:
+        tier: public
+    documentSelector:
+      path: kind
+      value: Deployment
+    asserts:
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: SENTRY_TAGS
+            value: az:melbourne,service:my-consumer-api,tier:public
+
+  - it: per-service sentry.release overrides the default
+    template: api.yaml
+    set:
+      sentry.dsn: https://key@glitchtip.example.org/1
+      api.sentry.release: custom@1.2.3
+    documentSelector:
+      path: kind
+      value: Deployment
+    asserts:
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: SENTRY_RELEASE
+            value: custom@1.2.3
+
+  - it: per-service sentry.enabled=false opts a container out
+    template: api.yaml
+    set:
+      sentry.dsn: https://key@glitchtip.example.org/1
+      api.sentry.enabled: false
+    documentSelector:
+      path: kind
+      value: Deployment
+    asserts:
+      - notExists:
+          path: spec.template.spec.containers[0].env
+
+  - it: apache env and sentry env coexist
+    template: api.yaml
+    set:
+      api.apache.enabled: true
+      sentry.dsn: https://key@glitchtip.example.org/1
+    documentSelector:
+      path: kind
+      value: Deployment
+    asserts:
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: APACHE_RUN_USER
+            value: consumer
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: SENTRY_DSN
+            value: https://key@glitchtip.example.org/1
+
+  - it: extra_container gets sentry env with its own name and tag
+    template: api.yaml
+    set:
+      sentry.dsn: https://key@glitchtip.example.org/1
+      api.extra_container:
+        name: metrics
+        image:
+          repository: example/exporter
+          tag: v1
+    documentSelector:
+      path: kind
+      value: Deployment
+    asserts:
+      - contains:
+          path: spec.template.spec.containers[1].env
+          content:
+            name: SENTRY_RELEASE
+            value: consumer@v1
+      - contains:
+          path: spec.template.spec.containers[1].env
+          content:
+            name: SENTRY_TAGS
+            value: service:my-consumer-metrics
+
+  - it: worker container gets sentry env with the worker service tag
+    template: worker.yaml
+    set:
+      sentry.dsn: https://key@glitchtip.example.org/1
+    documentSelector:
+      path: kind
+      value: Deployment
+    asserts:
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: SENTRY_DSN
+            value: https://key@glitchtip.example.org/1
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: SENTRY_TAGS
+            value: service:my-consumer-worker
+
+  - it: worker opts out via worker.sentry.enabled=false
+    template: worker.yaml
+    set:
+      sentry.dsn: https://key@glitchtip.example.org/1
+      worker.sentry.enabled: false
+    documentSelector:
+      path: kind
+      value: Deployment
+    asserts:
+      - notExists:
+          path: spec.template.spec.containers[0].env
+
+  - it: db-sync Job gets sentry env with a db-sync service tag
+    template: db-sync.yaml
+    set:
+      job.db_sync.enabled: true
+      job.db_sync.command: [consumer-manage]
+      job.db_sync.args: [db_sync]
+      sentry.dsn: https://key@glitchtip.example.org/1
+    asserts:
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: SENTRY_DSN
+            value: https://key@glitchtip.example.org/1
+      - contains:
+          path: spec.template.spec.containers[0].env
+          content:
+            name: SENTRY_TAGS
+            value: service:my-consumer-db-sync
+
+  - it: db-sync Job opts out via job.db_sync.sentry.enabled=false
+    template: db-sync.yaml
+    set:
+      job.db_sync.enabled: true
+      job.db_sync.command: [consumer-manage]
+      job.db_sync.args: [db_sync]
+      sentry.dsn: https://key@glitchtip.example.org/1
+      job.db_sync.sentry.enabled: false
+    asserts:
+      - notExists:
+          path: spec.template.spec.containers[0].env

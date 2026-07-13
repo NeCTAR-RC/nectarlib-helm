@@ -81,6 +81,53 @@ oslo_policy:
   admin_or_cloudadmin: 'role:admin or role:cloud_admin'
 ```
 
+### Sentry / GlitchTip error reporting
+
+The nectar-kolla service images ship a sentry bootstrap shim
+(`sentry_init.py` in `openstack-base`) that stays inert unless
+`SENTRY_DSN` is present in the container environment. The library
+injects `SENTRY_*` env vars into every container (api, extra
+container, workers, db-sync Job) when configured, mirroring
+`nectar::profile::kolla::run` in puppet-nectar:
+
+```yaml
+sentry:
+  dsn: https://key@glitchtip.example.org/1
+  environment: production-melbourne   # optional
+  tags:                               # optional, merged into SENTRY_TAGS
+    az: melbourne
+  traces_sample_rate: "0.1"           # optional, off by default
+  enable_logs: false                  # optional, Sentry Logs product
+  ca_certs: /path/inside/container    # optional, internal CA bundle
+  debug: false                        # optional, sdk transport debugging
+```
+
+Sentry is on when `sentry.dsn` is set, or when `sentry.enabled: true`
+for a DSN delivered out of band. Two out-of-band options:
+
+- `conf.envSecretRef` — put `SENTRY_DSN` in that Kubernetes Secret
+  (note explicit `env` entries win over `envFrom`, so don't also set
+  `sentry.dsn`).
+- Vault agent injector — have the consumer's
+  `<chart-name>.vaultAnnotations` template render a `KEY=VALUE` file
+  containing `SENTRY_DSN=...` and point the shim at it:
+
+  ```yaml
+  sentry:
+    enabled: true
+    env_file: /vault/secrets/sentry.env
+  ```
+
+  The shim merges the file into its environment at startup (real env
+  vars win), so the DSN never appears in values or the pod spec.
+
+Each container also gets
+`SENTRY_RELEASE=<chart>@<image tag>` and a
+`SENTRY_TAGS=service:<fullname>-<component>` tag matching its workload
+name. Per container, `sentry.enabled` / `sentry.release` /
+`sentry.tags` on the service dict (or on `job.db_sync`) override the
+defaults.
+
 ## Public templates
 
 | Template                  | Renders                                                                                     |
@@ -113,6 +160,7 @@ Each `$service` dict (e.g. `.Values.api`, `.Values.worker`) commonly carries:
 | `gateway.{enabled,kind,apiVersion,parentRefs,hostnames,timeouts,annotations}` | `enabled: false` | Gateway API route (defaults to `HTTPRoute`). |
 | `podAffinityPreset` / `podAntiAffinityPreset` / `nodeAffinityPreset` | `""` / `soft` / `{}` | Bitnami-style affinity presets. |
 | `affinity`                          | unset         | Raw `affinity:` block — overrides presets when set.                  |
+| `sentry.{enabled,release,tags}`     | unset         | Per-container overrides for the site-wide `.Values.sentry` settings. |
 
 ## Gotchas
 

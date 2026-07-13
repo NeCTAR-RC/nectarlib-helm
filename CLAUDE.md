@@ -64,7 +64,11 @@ The consumer must also place a `templates/config-map.yaml` that calls `nectarlib
 
 ## Per-service values surface
 
-Each `$service` dict (e.g. `.Values.api`) commonly carries: `name`, `image.repository`, `command`, `replicaCount`, `port`/`port_name`/`protocol`, `healthchecks` (set string `"false"` to disable), `healthcheck_path`, `volumes`, `volume_mounts`, `resources`, `extra_container`, `pdb.{enabled,minAvailable}`, `apache.{enabled,...}`, `uwsgi.{enabled,module,...}`, `gateway.{enabled,kind,parentRefs,hostnames,timeouts,...}`, `podAffinityPreset`/`podAntiAffinityPreset`/`nodeAffinityPreset`, `affinity` (overrides presets).
+Each `$service` dict (e.g. `.Values.api`) commonly carries: `name`, `image.repository`, `command`, `replicaCount`, `port`/`port_name`/`protocol`, `healthchecks` (set string `"false"` to disable), `healthcheck_path`, `volumes`, `volume_mounts`, `resources`, `extra_container`, `pdb.{enabled,minAvailable}`, `apache.{enabled,...}`, `uwsgi.{enabled,module,...}`, `gateway.{enabled,kind,parentRefs,hostnames,timeouts,...}`, `podAffinityPreset`/`podAntiAffinityPreset`/`nodeAffinityPreset`, `affinity` (overrides presets), `sentry.{enabled,release,tags}` (per-container overrides).
+
+## Sentry / GlitchTip
+
+The kolla images carry a sentry shim that activates when `SENTRY_DSN` is in the container environment. `nectarlib.sentry_env` (`_sentry.tpl`) renders `SENTRY_*` env entries into every container (api, extra_container, workers, db-sync Job) when `.Values.sentry.dsn` is set or `.Values.sentry.enabled` is true (the latter for a DSN delivered out of band: via `conf.envSecretRef`, or via a Vault-agent-rendered env file pointed at with `sentry.env_file`, which emits `SENTRY_ENV_FILE`). Site-wide keys: `dsn`, `environment`, `tags`, `traces_sample_rate`, `enable_logs`, `ca_certs`, `debug`, `env_file`. Each container gets `SENTRY_RELEASE=<chart>@<tag>` and a `service:<fullname>-<component>` tag; per-container `sentry.{enabled,release,tags}` on the service dict (or `job.db_sync`) override. Mirrors `nectar::profile::kolla::run` in puppet-nectar.
 
 When `apache.enabled` or `uwsgi.enabled` is set, an extra ConfigMap is rendered (`{fullname}-{apiName}-{apache|uwsgi}`) holding `wsgi-{fullname}.conf` or `uwsgi.ini`, generated from `_apache_wsgi.tpl` / `_uwsgi_ini.tpl`, and mounted into the api pod.
 

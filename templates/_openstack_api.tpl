@@ -5,6 +5,7 @@
 {{- $apiName := $service.name | default "api" -}}
 {{- $apache := $service.apache | default dict -}}
 {{- $uwsgi := $service.uwsgi | default dict -}}
+{{- $sentryEnv := include "nectarlib.sentry_env" (list . $service $apiName (.Values.image.tag | default .Chart.AppVersion)) | trim -}}
 ---
 apiVersion: apps/v1
 kind: Deployment
@@ -53,8 +54,9 @@ spec:
             - uwsgi
             - /etc/uwsgi/uwsgi.ini
           {{- end }}
-          {{- if $apache.enabled }}
+          {{- if or $apache.enabled $sentryEnv }}
           env:
+            {{- if $apache.enabled }}
             - name: APACHE_LOG_DIR
               value: /apache/
             - name: APACHE_PID_FILE
@@ -67,6 +69,10 @@ spec:
               value: /apache/
             - name: APACHE_RUN_USER
               value: {{ .Chart.Name }}
+            {{- end }}
+            {{- with $sentryEnv }}
+            {{- . | nindent 12 }}
+            {{- end }}
           {{- end }}
           {{- if .Values.conf.envSecretRef }}
           envFrom:
@@ -121,6 +127,10 @@ spec:
           {{- if $service.extra_container.command }}
           command:
             {{- toYaml $service.extra_container.command | nindent 12 }}
+          {{- end }}
+          {{- with include "nectarlib.sentry_env" (list . $service $service.extra_container.name ($service.extra_container.image.tag | default .Values.image.tag | default .Chart.AppVersion)) | trim }}
+          env:
+            {{- . | nindent 12 }}
           {{- end }}
           {{- if .Values.conf.envSecretRef }}
           envFrom:

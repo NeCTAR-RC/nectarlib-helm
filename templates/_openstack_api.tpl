@@ -6,6 +6,9 @@
 {{- $apache := $service.apache | default dict -}}
 {{- $uwsgi := $service.uwsgi | default dict -}}
 {{- $sentryEnv := include "nectarlib.sentry_env" (list . $service $apiName (.Values.image.tag | default .Chart.AppVersion)) | trim -}}
+{{- $configChecksum := include (print $.Template.BasePath "/config-map.yaml") . -}}
+{{- if $apache.enabled -}}{{- $configChecksum = printf "%s%s" $configChecksum (include "nectarlib.apache_wsgi" (list $ . $service)) -}}{{- end -}}
+{{- if $uwsgi.enabled -}}{{- $configChecksum = printf "%s%s" $configChecksum (include "nectarlib.uwsgi_ini" (list $ . $service)) -}}{{- end -}}
 ---
 apiVersion: apps/v1
 kind: Deployment
@@ -25,7 +28,7 @@ spec:
   template:
     metadata:
       annotations:
-        checksum/config: {{ include (print $.Template.BasePath "/config-map.yaml") . | sha256sum }}
+        checksum/config: {{ $configChecksum | sha256sum }}
         {{- if ne (toString .Values.vault.enabled) "false" }}
         {{- include (print .Chart.Name ".vaultAnnotations") . | nindent 8 }}
         {{- end }}
@@ -212,9 +215,6 @@ apiVersion: v1
 kind: ConfigMap
 metadata:
   name: {{ include "nectarlib.fullname" . }}-{{ $apiName }}-apache
-  annotations:
-    "helm.sh/hook": pre-install,pre-upgrade
-    "helm.sh/hook-weight": "2"
 data:
   wsgi-{{ include "nectarlib.fullname" . }}.conf: |-
 {{ include "nectarlib.apache_wsgi" (list $ . $service) | indent 4 }}
@@ -227,9 +227,6 @@ apiVersion: v1
 kind: ConfigMap
 metadata:
   name: {{ include "nectarlib.fullname" . }}-{{ $apiName }}-uwsgi
-  annotations:
-    "helm.sh/hook": pre-install,pre-upgrade
-    "helm.sh/hook-weight": "2"
 data:
   uwsgi.ini: |-
 {{ include "nectarlib.uwsgi_ini" (list $ . $service) | indent 4 }}

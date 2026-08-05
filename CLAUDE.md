@@ -64,7 +64,7 @@ The consumer must also place a `templates/config-map.yaml` that calls `nectarlib
 
 ## Per-service values surface
 
-Each `$service` dict (e.g. `.Values.api`) commonly carries: `name`, `image.repository`, `command`, `replicaCount`, `port`/`port_name`/`protocol`, `healthchecks` (set string `"false"` to disable), `healthcheck_path`, `volumes`, `volume_mounts`, `resources`, `extra_container`, `pdb.{enabled,minAvailable}`, `apache.{enabled,...}`, `uwsgi.{enabled,module,...}`, `gateway.{enabled,kind,parentRefs,hostnames,timeouts,...}`, `podAffinityPreset`/`podAntiAffinityPreset`/`nodeAffinityPreset`, `affinity` (overrides presets), `sentry.{enabled,release,tags}` (per-container overrides).
+Each `$service` dict (e.g. `.Values.api`) commonly carries: `name`, `image.repository`, `command`, `replicaCount`, `port`/`port_name`/`protocol`, `healthchecks` (set string `"false"` to disable), `healthcheck_path`, `volumes`, `volume_mounts`, `resources`, `extra_container`, `pdb.{enabled,minAvailable}`, `preStopSleep` (drain seconds before SIGTERM, default 10, set string `"false"` to disable), `terminationGracePeriodSeconds` (default 60), `apache.{enabled,...}`, `uwsgi.{enabled,module,...}`, `gateway.{enabled,kind,parentRefs,hostnames,timeouts,...}`, `podAffinityPreset`/`podAntiAffinityPreset`/`nodeAffinityPreset`, `affinity` (overrides presets), `sentry.{enabled,release,tags}` (per-container overrides).
 
 ## Sentry / GlitchTip
 

@@ -41,6 +41,9 @@ spec:
         {{- toYaml . | nindent 8 }}
       {{- end }}
       serviceAccountName: {{ include "nectarlib.serviceAccountName" . }}
+      # preStop sleep + grace period: pod leaves the EndpointSlices while the
+      # sleep holds SIGTERM off, so envoy stops routing to it before shutdown
+      terminationGracePeriodSeconds: {{ $service.terminationGracePeriodSeconds | default 60 }}
       securityContext:
         {{- toYaml .Values.podSecurityContext | nindent 8 }}
       containers:
@@ -86,6 +89,12 @@ spec:
             - name: {{ $service.port_name | default "http" }}
               containerPort: {{ $service.port | default 80 }}
               protocol: {{ $service.protocol | default "TCP" }}
+          {{- if ne (toString $service.preStopSleep) "false" }}
+          lifecycle:
+            preStop:
+              exec:
+                command: ["sleep", "{{ $service.preStopSleep | default 10 }}"]
+          {{- end }}
           {{- if ne (toString $service.healthchecks) "false" }}
           livenessProbe:
             httpGet:

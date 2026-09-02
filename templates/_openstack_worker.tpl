@@ -64,6 +64,18 @@ spec:
             {{- end }}
           resources:
             {{- toYaml $service.resources | nindent 12 }}
+          {{- with $service.livenessProbe }}
+          livenessProbe:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+          {{- with $service.readinessProbe }}
+          readinessProbe:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+          {{- with $service.startupProbe }}
+          startupProbe:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
       volumes:
         - name: {{ include "nectarlib.fullname" . }}
           configMap:

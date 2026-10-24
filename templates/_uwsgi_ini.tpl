@@ -24,6 +24,7 @@ threads = {{ $service.uwsgi.threads | default "2" }}
 socket-timeout = 30
 thunder-lock = true
 worker-reload-mercy = {{ $service.uwsgi.timeout | default "80" }}
+max-requests = {{ $service.uwsgi.max_requests | default "60000" }}
 log-master = true
 threaded-logger = true
 log-x-forwarded-for = true

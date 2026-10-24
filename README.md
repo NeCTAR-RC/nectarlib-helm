@@ -158,6 +158,7 @@ Each `$service` dict (e.g. `.Values.api`, `.Values.worker`) commonly carries:
 | `pdb.enabled` / `pdb.minAvailable`  | `false` / `1` | Renders a PodDisruptionBudget when enabled.                          |
 | `apache.enabled`                    | `false`       | Renders a `wsgi-<fullname>.conf` ConfigMap and mounts it on the api pod. |
 | `uwsgi.enabled` / `uwsgi.module`    | `false`       | Renders a `uwsgi.ini` ConfigMap and mounts it on the api pod.        |
+| `uwsgi.max_requests`                | `60000`       | Recycle each worker after this many requests (memory guardrail).     |
 | `gateway.{enabled,kind,apiVersion,parentRefs,hostnames,timeouts,annotations}` | `enabled: false` | Gateway API route (defaults to `HTTPRoute`). |
 | `podAffinityPreset` / `podAntiAffinityPreset` / `nodeAffinityPreset` | `""` / `soft` / `{}` | Bitnami-style affinity presets. |
 | `affinity`                          | unset         | Raw `affinity:` block — overrides presets when set.                  |

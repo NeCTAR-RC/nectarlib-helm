@@ -458,6 +458,33 @@ tests:
             name: my-consumer-uwsgi
             mountPath: /etc/uwsgi/
 
+  - it: uwsgi recycles workers after 60000 requests by default
+    template: api.yaml
+    set:
+      api.uwsgi.enabled: true
+      api.uwsgi.module: blazar.api.wsgi:application
+    documentSelector:
+      path: metadata.name
+      value: my-consumer-api-uwsgi
+    asserts:
+      - matchRegex:
+          path: data["uwsgi.ini"]
+          pattern: "max-requests = 60000"
+
+  - it: uwsgi.max_requests overrides the recycle count
+    template: api.yaml
+    set:
+      api.uwsgi.enabled: true
+      api.uwsgi.module: blazar.api.wsgi:application
+      api.uwsgi.max_requests: 5000
+    documentSelector:
+      path: metadata.name
+      value: my-consumer-api-uwsgi
+    asserts:
+      - matchRegex:
+          path: data["uwsgi.ini"]
+          pattern: "max-requests = 5000"
+
   - it: uwsgi.enabled defaults command to uwsgi /etc/uwsgi/uwsgi.ini
     template: api.yaml
     set:

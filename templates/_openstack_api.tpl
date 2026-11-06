@@ -96,21 +96,32 @@ spec:
                 command: ["sleep", "{{ $service.preStopSleep | default 10 }}"]
           {{- end }}
           {{- if ne (toString $service.healthchecks) "false" }}
+          {{- /* httpGet always derives from healthcheck_path. The optional
+                 livenessProbe/readinessProbe/startupProbe dicts only add or
+                 override timing fields (periodSeconds, timeoutSeconds,
+                 failureThreshold, ...); any httpGet they carry is ignored. */}}
+          {{- $liveness := omit ($service.livenessProbe | default dict) "httpGet" }}
+          {{- $readiness := omit ($service.readinessProbe | default dict) "httpGet" }}
+          {{- $startup := merge (dict) (omit ($service.startupProbe | default dict) "httpGet") (dict "initialDelaySeconds" 30 "timeoutSeconds" 5 "failureThreshold" 10) }}
           livenessProbe:
             httpGet:
               path: {{ $service.healthcheck_path | default "/healthcheck" }}
               port: {{ $service.port_name | default "http" }}
+            {{- with $liveness }}
+            {{- toYaml . | nindent 12 }}
+            {{- end }}
           readinessProbe:
             httpGet:
               path: {{ $service.healthcheck_path | default "/healthcheck" }}
               port: {{ $service.port_name | default "http" }}
+            {{- with $readiness }}
+            {{- toYaml . | nindent 12 }}
+            {{- end }}
           startupProbe:
             httpGet:
               path: {{ $service.healthcheck_path | default "/healthcheck" }}
               port: {{ $service.port_name | default "http" }}
-            initialDelaySeconds: 30
-            timeoutSeconds: 5
-            failureThreshold: 10
+            {{- toYaml $startup | nindent 12 }}
           {{- end }}
           volumeMounts:
             - name: {{ include "nectarlib.fullname" . }}

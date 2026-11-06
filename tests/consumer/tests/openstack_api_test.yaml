@@ -175,6 +175,68 @@ tests:
       - notExists:
           path: spec.template.spec.containers[0].livenessProbe
 
+  - it: liveness and readiness probes carry no timing unless overridden
+    template: api.yaml
+    documentSelector:
+      path: kind
+      value: Deployment
+    asserts:
+      - equal:
+          path: spec.template.spec.containers[0].livenessProbe
+          value:
+            httpGet:
+              path: /healthcheck
+              port: http
+      - equal:
+          path: spec.template.spec.containers[0].readinessProbe
+          value:
+            httpGet:
+              path: /healthcheck
+              port: http
+
+  - it: probe timing overrides merge into the httpGet probes
+    template: api.yaml
+    set:
+      api.livenessProbe:
+        periodSeconds: 10
+        timeoutSeconds: 5
+        failureThreshold: 6
+      api.readinessProbe:
+        timeoutSeconds: 5
+      api.startupProbe:
+        failureThreshold: 20
+        httpGet:
+          path: /ignored
+    documentSelector:
+      path: kind
+      value: Deployment
+    asserts:
+      - equal:
+          path: spec.template.spec.containers[0].livenessProbe
+          value:
+            httpGet:
+              path: /healthcheck
+              port: http
+            periodSeconds: 10
+            timeoutSeconds: 5
+            failureThreshold: 6
+      - equal:
+          path: spec.template.spec.containers[0].readinessProbe
+          value:
+            httpGet:
+              path: /healthcheck
+              port: http
+            timeoutSeconds: 5
+      - equal:
+          path: spec.template.spec.containers[0].startupProbe
+          value:
+            httpGet:
+              path: /healthcheck
+              port: http
+            initialDelaySeconds: 30
+            timeoutSeconds: 5
+            failureThreshold: 20
+
   - it: vault.enabled=false omits vault annotations
     template: api.yaml
     set:

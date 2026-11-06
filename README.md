@@ -151,6 +151,7 @@ Each `$service` dict (e.g. `.Values.api`, `.Values.worker`) commonly carries:
 | `port` / `port_name` / `protocol`   | `80` / `http` / `TCP` | api only.                                                    |
 | `healthchecks`                      | enabled       | Set string `"false"` to disable liveness + startup probes.           |
 | `healthcheck_path`                  | `/healthcheck`| HTTP path probed.                                                    |
+| `livenessProbe` / `readinessProbe` / `startupProbe` | unset | api: timing fields (`periodSeconds`, `timeoutSeconds`, `failureThreshold`, ...) merged into the generated httpGet probe; `httpGet` always comes from `healthcheck_path`. worker: raw `v1.Probe` passed through. |
 | `volumes` / `volume_mounts`         | `[]`          | Extra volumes/mounts merged into the pod.                            |
 | `resources`                         | `{}`          | Standard `resources:` block.                                         |
 | `extra_container`                   | unset         | Optional sidecar with its own `image`, `command`, `resources`.       |
